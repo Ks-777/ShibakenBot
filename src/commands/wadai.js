@@ -1,25 +1,13 @@
 const { SlashCommandBuilder } = require('discord.js');
-const fs = require('fs');
-// ☆wadai.txtに改行と各行の末尾に,をつければ話題を簡単に追加可能☆ ここからファイル読み込み&wadai定義処理
-const wadaiFile = require('./database/wadai.txt');
-fs.readFileSync('./text.txt', utf-8, (err, data) => {
-    if(data) {
-        const wadai_nokaigyo = data;
-    } else {
-        console.log(err);
-    }
-});
-const wadai_nolist = wadai_nokaigyo.replace(/\n/g, '');
-const wadai = wadai_nolist.split(',')
-// ここまでがファイル読み込み&wadai定義処理
+var wadai = ['このサーバーで一番ヤバい奴決定戦', 'このサーバーで一番いい奴決定戦', '最近行って良かったなと思った場所発表', 'ガチでおもろいゲーム紹介', 'えっ？って思った瞬間選手権', '人生が終了しかけた出来事選手権', '明らかに一番おいしいお菓子選手権', '好きな飲み物発表会', '一番ご飯に合うご飯のお供選手権', '一番好きなYouTuber発表', '最近一番笑った出来事は?', '一番好きな栄養素は?', '一番好きなサイトは?', '性転換したいですか？', '学校で泣いたことはありますか？', '人生つらかった瞬間は?', '死', '一番好きな料理は?', '白米vsパンvsコーンフレークvsその他', 'iPhoneとAndroidどっちが好き?', 'ヒカキンとセイキンとデカキンとチビキンとミニキン一番好きなのは?', '健全vsnot健全', 'スイッチvsプレステ', '話題はお前が作るんだよ>>コマンド実行者', '1:話題は安価で決めますwww >>3', 'ラーメン 醤油･豚骨･味噌･塩･魚介豚骨･醤油豚骨･博多豚骨どれが好き?', 'デジタルとアナログどっちが好き?', 'マクド(マック･マクドナルド)モス(モスバーガー)バーキン(バーガーキング)などのハンバーガーチェーンどれが好き?', '今日幸せと思ったこと', '今日楽しかったこと', '今日したこと', '今日あまり楽しくなかったこと', '今日どんなこと調べた？', '今日何について考えた？', '好きな動物は？', '好きor嫌いな教科は？', '何色が好き？（理由も）', 'どんなアニメor漫画みてる？', '映画は何見たor見たい？', '趣味は？', 'どんな音楽きく？', 'ハマっていることは？', 'どんな場所が落ち着く？', '好きな時間帯は？(深夜･朝･昼･夕方･夜)', '自分のことどう思ってる？', '今いる人に一言褒める', 'しりとりをする', '最近見てるアニメ', '好きなキャラクター', '転生するとしたら何に生まれ変わりたい?', '好きな場所', '好きな行事', '◯◯診断をしよう！', '好きな宝石', 'この鯖の一番好きな所'];
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('wadai')
         .setDescription('話の話題をランダムに送信します。(50個以上) みんなの話題募集中!'),
     execute: async function(interaction) {
-        const randnum = Math.floor(Math.random() * wadai.length);  // 0からwadai配列の長さ-1までの乱数を生成
-        const select_wadai = wadai[randnum];  // 乱数に対応するwadaiの要素を選択
+        var randnum = Math.floor(Math.random() * wadai.length);  // 0からwadai配列の長さ-1までの乱数を生成
+        var select_wadai = wadai[randnum];  // 乱数に対応するwadaiの要素を選択
         await interaction.reply({ content: `# 話題：${select_wadai}` });
     },
 };
