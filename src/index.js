@@ -1,6 +1,6 @@
 require('dotenv').config();
 const token = process.env.token;
-const { Client, MessageEmbed, GatewayIntentBits, Events, Message } = require('discord.js');
+const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType} = require('discord.js');
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -25,6 +25,7 @@ const client = new Client({
 const helpFile = require('./commands/help.js');
 const spaceFile = require('./commands/space.js');
 const wadaiFile = require('./commands/wadai.js');
+const memberFile = require('./commands/member.js');
 client.on('ready', () => {
     console.log(`Ready${client.user.tag}`);
     setInterval(() => {
@@ -32,6 +33,7 @@ client.on('ready', () => {
             name: `${client.ws.ping}ms|Shibaken!|/help`
         })
     }, 10000)
+    checkChannelMessages();
 });
 // interactionCreateイベントリスナーでコマンドを最初に処理する
 client.on(Events.InteractionCreate, async interaction => {
@@ -76,6 +78,18 @@ client.on(Events.InteractionCreate, async interaction => {
             }
         }
     }
+    else if (interaction.commandName === memberFile.data.name) {
+        try {
+            await memberFile.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            }
+        }
+    }
     },
 client.on('messageCreate', message => {
     if (message.author.bot) return;
@@ -106,5 +120,42 @@ client.on('messageCreate', message => {
         message.channel.send(newMessageContent);
     }
 }));
+// 過疎通知
+const CHANNEL_ID = '1250416661522153556'; //この機能を使用するサーバーで機能を適用したいチャンネルのID
+const CHECK_INTERVAL = 10 * 1000; 
+const NO_MESSAGE_INTERVAL_5_MIN = 5 * 60 * 1000;
+const NO_MESSAGE_INTERVAL_10_MIN = 10 * 60 * 1000; 
+const NO_MESSAGE_INTERVAL_1_HOUR = 60 * 60 * 1000; 
+
+async function checkChannelMessages() {
+    const channel = await client.channels.fetch(CHANNEL_ID);
+    const messages = await channel.messages.fetch({ limit: 1 });
+    const lastMessage = messages.first();
+    const now = new Date();
+
+    
+    // 日本時間で夜1時以降朝6時未満の時はメッセージを送らない
+    const japanOffset = 9 * 60 * 60 * 1000; // UTC+9時間
+    const japanTime = new Date(now.getTime() + japanOffset);
+    const hour = japanTime.getUTCHours();
+
+    if (hour >= 24 || hour < 7) {
+        // 日本時間で24時以降朝6時未満の時は処理を中断
+        setTimeout(checkChannelMessages, CHECK_INTERVAL);
+        return;
+    }
+    const lastMessageTimestamp = lastMessage ? lastMessage.createdTimestamp : 0;
+    
+    if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
+        await channel.send('1時間メッセージがありませんでした\n# 圧　倒　的　過　疎');
+    } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
+        await channel.send('10分メッセージがありませんでした\n## 過密しよ');
+    } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
+        await channel.send('5分メッセージがありませんでした');
+    }
+
+    setTimeout(checkChannelMessages, CHECK_INTERVAL
+    )
+};
 //BOTの起動 tokenは.envに記述しておく
 client.login(token)
