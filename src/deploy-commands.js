@@ -38,6 +38,10 @@ const commands = [
         .setName('wadai')
         .setDescription('話の話題をランダムに送信します。(50個以上) みんなの話題募集中!')
         .toJSON(),
+    new SlashCommandBuilder()
+        .setName('member')
+        .setDescription('メンバー人数のソテー BOTの数を添えて')
+        .toJSON(),
 ];
 async function main() {
     try {
