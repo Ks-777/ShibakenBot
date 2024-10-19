@@ -30,7 +30,13 @@ module.exports = {
             const text = interaction.options.getString('text');
             const intext = interaction.options.getString('space_choice');
             const editedtext = text.split('').join(intext);
-            const editedtext_2 = `\`\`\`${title} ${editedtext}\`\`\``;
+			if (title == null)
+			{
+				var editedtext_2 = `\`\`\`${editedtext}\`\`\``;
+				await interaction.reply({ content: `${editedtext_2}`, ephemeral: true });
+				return;
+			}
+			var editedtext_2 = `\`\`\`${title} ${editedtext}\`\`\``;
             await interaction.reply({ content: `${editedtext_2}`, ephemeral: true });
     },
 };
