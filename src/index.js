@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
-const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType} = require('discord.js');
+const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, channelLink} = require('discord.js');
 var client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -159,8 +159,6 @@ client.on('messageCreate', message => {
         // 変換されたメッセージを再送信
         message.channel.send(newMessageContent);
     }
-    if (message.author.bot) return;
-
     const userId = message.author.id;
     const today = new Date().toDateString();
 
@@ -194,6 +192,7 @@ const CHANNEL_ID = '1250416661522153556'; //この機能を使用するサーバ
 const CHECK_INTERVAL = 10 * 1000; 
 const NO_MESSAGE_INTERVAL_5_MIN = 5 * 60 * 1000;
 const NO_MESSAGE_INTERVAL_10_MIN = 10 * 60 * 1000; 
+const NO_MESSAGE_INTERVAL_30_MIN = 30 * 60 * 1000;
 const NO_MESSAGE_INTERVAL_1_HOUR = 60 * 60 * 1000; 
 
 async function checkChannelMessages() {
@@ -218,6 +217,13 @@ async function checkChannelMessages() {
     if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
         await channel.send('\`1時間メッセージがありませんでした\`\n\n# 圧　倒　的　過　疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
     } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
+    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_30_MIN)
+    {
+        if (lastMessage.author.id === client.user.id) 
+            if (lastMessage.content.includes('1時間')) return;
+            else if (lastMessage.content.includes('30分')) return;
+        await channel.send('\`30分間メッセージがありませんでした\`\n\n# 過疎を過密に変えよう定期\n</wadai:1296469890227507283>で話題を生成して会話しよう')
+    }
         await channel.send('\`10分メッセージがありませんでした\`\n## 過密しよ\n</wadai:1296469890227507283>で話題を生成して会話しよう');
     } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
         await channel.send('**過疎**\n</wadai:1296469890227507283>で話題を生成して会話しよう');
