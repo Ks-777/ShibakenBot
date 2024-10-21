@@ -201,7 +201,6 @@ async function checkChannelMessages() {
     const lastMessage = messages.first();
     const now = new Date();
 
-    
     // 日本時間で夜1時以降朝6時未満の時はメッセージを送らない
     const japanOffset = 9 * 60 * 60 * 1000; // UTC+9時間
     const japanTime = new Date(now.getTime() + japanOffset);
@@ -215,8 +214,11 @@ async function checkChannelMessages() {
     const lastMessageTimestamp = lastMessage ? lastMessage.createdTimestamp : 0;
     
     if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
-        await channel.send('\`1時間メッセージがありませんでした\`\n\n# 圧　倒　的　過　疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
+        if (lastMessage.author.id === client.user.id) 
+            if (lastMessage.content.includes('1時間')) return;
+    
+    await channel.send('\`1時間メッセージがありませんでした\`\n\n# 圧　倒　的　過　疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+    }
     else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_30_MIN)
     {
         if (lastMessage.author.id === client.user.id) 
@@ -224,8 +226,18 @@ async function checkChannelMessages() {
             else if (lastMessage.content.includes('30分')) return;
         await channel.send('\`30分間メッセージがありませんでした\`\n\n# 過疎を過密に変えよう定期\n</wadai:1296469890227507283>で話題を生成して会話しよう')
     }
+    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
+        if (lastMessage.author.id === client.user.id) 
+            if (lastMessage.content.includes('1時間')) return;
+            else if (lastMessage.content.includes('30分')) return;
+            else if (lastMessage.content.includes('10分'))  return;
         await channel.send('\`10分メッセージがありませんでした\`\n## 過密しよ\n</wadai:1296469890227507283>で話題を生成して会話しよう');
     } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
+        if (lastMessage.author.id === client.user.id) 
+            if (lastMessage.content.includes('1時間')) return;
+            else if (lastMessage.content.includes('30分')) return;
+            else if (lastMessage.content.includes('10分')) return;
+            else if (lastMessage.content.includes('過疎')) return;
         await channel.send('**過疎**\n</wadai:1296469890227507283>で話題を生成して会話しよう');
     }
 
