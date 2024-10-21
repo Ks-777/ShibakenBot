@@ -1,8 +1,9 @@
 require('dotenv').config();
 const fs = require('fs');
 const token = process.env.token;
+const token_unb = process.env.token_unb;
 const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType} = require('discord.js');
-const client = new Client({
+var client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
@@ -30,6 +31,8 @@ const wadaiFile = require('./commands/wadai.js');
 const memberFile = require('./commands/member.js');
 // 初めてログイン検知時使用
 const log_msgFile = 'log-msg.json';
+// クールダウン用
+const cooldowns = new Map();
 
 var saveSentMessages = () => {
     fs.writeFileSync(log_msgFile, JSON.stringify(Array.from(sentMessages)));
@@ -63,11 +66,21 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // スラッシュコマンドが存在しない場合は何もしない(return)
     if (!interaction.isChatInputCommand()) return;
+    const now = Date.now();
+    const userId = interaction.user.id;
+
+    if (cooldowns.has(userId)) {
+        const expirationTime = cooldowns.get(userId) + 5000; // 5秒のクールダウンタイム
+        if (now < expirationTime) {
+            return interaction.reply({ content: 'スラッシュコマンドを実行するにはもう少し時間をおいてください。', ephemeral: true });
+        }
+    }
     
     // helpコマンドする処理
     if (interaction.commandName === helpFile.data.name) {
         try {
             await helpFile.execute(interaction);
+            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -80,6 +93,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === spaceFile.data.name) {
         try {
             await spaceFile.execute(interaction);
+            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -92,6 +106,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === wadaiFile.data.name) {
         try {
             await wadaiFile.execute(interaction);
+            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -104,6 +119,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === memberFile.data.name) {
         try {
             await memberFile.execute(interaction);
+            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -113,7 +129,7 @@ client.on(Events.InteractionCreate, async interaction => {
             }
         }
     }
-},
+});
 
 client.on('messageCreate', message => {
     if (message.author.bot) return;
@@ -152,12 +168,27 @@ client.on('messageCreate', message => {
     const key = `${userId}-${today}`;
 
     if (!sentMessages.has(key)) {
-        sentMessages.add(key);
-
-        message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。\``, allowedMentions: { repliedUser: false }});
-        saveSentMessages();
-    }
-}));
+        const url = `https://unbelievaboat.com/api/v1/guilds/1250416661522153553/users/${userId}`;
+        const options = {
+            method: 'PATCH',
+            headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                Authorization: `${token_unb}`
+            },
+            body: JSON.stringify({cash: 3000})
+        }
+        
+        fetch(url, options)
+            .then(res => res.json())
+            .then(json => console.log(json))
+            .catch(err => console.error('error:' + err));
+        if (!sentMessages.has(key)) {
+            sentMessages.add(key);
+            message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。3000チーをプレゼント!\``, allowedMentions: { repliedUser: false }});
+            saveSentMessages();
+        }
+}});
 // 過疎通知
 const CHANNEL_ID = '1250416661522153556'; //この機能を使用するサーバーで機能を適用したいチャンネルのID
 const CHECK_INTERVAL = 10 * 1000; 
