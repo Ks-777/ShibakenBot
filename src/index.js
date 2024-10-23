@@ -31,6 +31,7 @@ const wadaiFile = require('./commands/wadai.js');
 const memberFile = require('./commands/member.js');
 // 初めてログイン検知時使用
 const log_msgFile = 'log-msg.json';
+let lastUserMessageTimestamp = 0
 // クールダウン用
 const cooldowns = new Map();
 
@@ -133,7 +134,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
 client.on('messageCreate', message => {
     if (message.author.bot) return;
-
+    lastUserMessageTimestamp = message.createdTimestamp;
     const twitterRegex = /https:\/\/twitter\.com\/\S+/g;
     const xRegex = /https:\/\/x\.com\/\S+/g;
 
@@ -201,48 +202,55 @@ async function checkChannelMessages() {
     const lastMessage = messages.first();
     const now = new Date();
 
-    // 日本時間で夜1時以降朝6時未満の時はメッセージを送らない
+    // 日本時間で夜24時以降朝6時未満の時はメッセージを送らない
     const japanOffset = 9 * 60 * 60 * 1000; // UTC+9時間
     const japanTime = new Date(now.getTime() + japanOffset);
     const hour = japanTime.getUTCHours();
+    const localHour = japanTime.getHours();
 
-    if (hour >= 24 || hour < 7) {
-        // 日本時間で24時以降朝6時未満の時は処理を中断
+    if (localHour >= 0 && localHour < 6) {
+        // 日本時間で夜24時以降朝6時未満の時は処理を中断
         setTimeout(checkChannelMessages, CHECK_INTERVAL);
         return;
     }
-    const lastMessageTimestamp = lastMessage ? lastMessage.createdTimestamp : 0;
+    async function checkChannelMessages() {
+        const now = Date.now();
     
-    if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
+        // 日本時間のチェック
+        const japanOffset = 9 * 60 * 60 * 1000;
+        const japanTime = new Date(now + japanOffset);
+        const localHour = japanTime.getUTCHours();
     
-    await channel.send('\`1時間メッセージがありませんでした\`\n\n# 圧　倒　的　過　疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+        if (localHour >= 24 || localHour < 6) {
+            setTimeout(checkChannelMessages, CHECK_INTERVAL);
+            return;
+        }
+    
+        try {
+            const channel = await client.channels.fetch('YOUR_CHANNEL_ID');
+            const messages = await channel.messages.fetch({ limit: 1 });
+            const lastMessage = messages.first();
+            const lastMessageTimestamp = lastMessage ? lastMessage.createdTimestamp : 0;
+    
+            if (lastUserMessageTimestamp && now - lastUserMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
+                if (lastMessage && lastMessage.author.id === client.user.id && lastMessage.content.includes('1時間')) return;
+                await channel.send('`1時間メッセージがありませんでした`\n\n# 圧倒的過疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+            } else if (lastUserMessageTimestamp && now - lastUserMessageTimestamp > NO_MESSAGE_INTERVAL_30_MIN) {
+                if (lastMessage && lastMessage.author.id === client.user.id && lastMessage.content.includes('30分')) return;
+                await channel.send('`30分間メッセージがありませんでした`\n\n# 過疎を過密に変えよう定期\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+            } else if (lastUserMessageTimestamp && now - lastUserMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
+                if (lastMessage && lastMessage.author.id === client.user.id && lastMessage.content.includes('10分')) return;
+                await channel.send('`10分メッセージがありませんでした`\n## 過密しよ\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+            } else if (lastUserMessageTimestamp && now - lastUserMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
+                if (lastMessage && lastMessage.author.id === client.user.id && lastMessage.content.includes('過疎')) return;
+                await channel.send('**過疎**\n</wadai:1296469890227507283>で話題を生成して会話しよう');
+            }
+        } catch (error) {
+            console.error('Error checking messages:', error);
+        }
+    
+        setTimeout(checkChannelMessages, CHECK_INTERVAL);
     }
-    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_30_MIN)
-    {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-        await channel.send('\`30分間メッセージがありませんでした\`\n\n# 過疎を過密に変えよう定期\n</wadai:1296469890227507283>で話題を生成して会話しよう')
-    }
-    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-            else if (lastMessage.content.includes('10分'))  return;
-        await channel.send('\`10分メッセージがありませんでした\`\n## 過密しよ\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-            else if (lastMessage.content.includes('10分')) return;
-            else if (lastMessage.content.includes('過疎')) return;
-        await channel.send('**過疎**\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    }
-
-    setTimeout(checkChannelMessages, CHECK_INTERVAL
-    )
-};
+};    
 //BOTの起動 tokenは.envに記述しておく
 client.login(token)
