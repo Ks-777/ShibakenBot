@@ -2,6 +2,8 @@
   "dependencies": {
     "@discordjs/builders": "^1.8.2",
     "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "latest-yahoo-news": "^2.1.2",
+    "node-schedule": "^2.1.1"
   }
 }

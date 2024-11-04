@@ -42,6 +42,22 @@ const commands = [
         .setName('member')
         .setDescription('メンバー人数のソテー BOTの数を添えて')
         .toJSON(),
+    new SlashCommandBuilder()
+        .setName('news')
+        .setDescription('ニュースや天気を表示します')
+        .addStringOption(option =>
+			option.setName('tenki_choice')
+				.setDescription('送信する情報を選択')
+				.setRequired(true)
+				.addChoices(
+					{ name: '総合(メイン)', value: 'top' },
+					{ name: '経済', value: 'business' },
+					{ name: '政治', value: 'domestic' },
+                    { name: 'IT(ICT)', value: 'it' },
+                    { name: 'エンタメ', value: 'entertainment' },
+                    { name: '科学', value: 'science' },
+                    { name: '国際', value: 'world' },
+                )),
 ];
 async function main() {
     try {

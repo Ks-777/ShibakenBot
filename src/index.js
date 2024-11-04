@@ -2,7 +2,9 @@ require('dotenv').config();
 const fs = require('fs');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
-const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, channelLink} = require('discord.js');
+const yn = require('latest-yahoo-news');
+const schedule = require('node-schedule');
+const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, } = require('discord.js');
 var client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -29,6 +31,7 @@ const helpFile = require('./commands/help.js');
 const spaceFile = require('./commands/space.js');
 const wadaiFile = require('./commands/wadai.js');
 const memberFile = require('./commands/member.js');
+const newsFile = require('./commands/news.js')
 // 初めてログイン検知時使用
 const log_msgFile = 'log-msg.json';
 // クールダウン用
@@ -129,7 +132,20 @@ client.on(Events.InteractionCreate, async interaction => {
             }
         }
     }
-});
+    else if (interaction.commandName === newsFile.data.name) {
+        try {
+            await newsFile.execute(interaction);
+          setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
+        } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            }
+        }
+    }
+    });
 
 client.on('messageCreate', message => {
     if (message.author.bot) return;
