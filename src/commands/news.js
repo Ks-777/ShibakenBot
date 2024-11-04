@@ -20,26 +20,26 @@ module.exports = {
                 )),
     execute: async function(interaction) {
         const choice = interaction.options.getString('tenki_choice');
-        await interaction.deferReply({ ephemeral: true }); // 応答を一時停止し、非表示で設定
+        await interaction.deferReply({ ephemeral: true });
         try {
-            const news_t = await yn(choice); // 非同期でニュースを取得
+            const news_t = await yn(choice); 
             if (!news_t.success) {
-                return interaction.editReply({ content: 'エラーが発生しました。', ephemeral: true }); // 非表示で応答
+                return interaction.editReply({ content: 'エラーが発生しました。', ephemeral: true }); 
             }
             const newsEmbed = new EmbedBuilder()
                 .setTitle(`ニュースお知らせ(${choice})`)
                 .setDescription(`<t:${Math.floor(Date.now() / 1000)}:F> 現在のニュースをお知らせします。`)
                 .setColor(Colors.Green);
-            
+            // 取得したn個のニュースの内容を全部別々のフィールドにする
             news_t.news.forEach(newsItem => {
                 newsEmbed.addFields(
                     { name: `${newsItem.title}(URL:${newsItem.link})`, value: newsItem.description, inline: true }
                 );
             });
-            return interaction.editReply({ embeds: [newsEmbed], ephemeral: true }); // 非表示で応答
+            return interaction.editReply({ embeds: [newsEmbed], ephemeral: true }); 
         } catch (error) {
             console.error('エラー:', error);
-            return interaction.editReply({ content: 'ニュースの取得中にエラーが発生しました。', ephemeral: true }); // 非表示で応答
+            return interaction.editReply({ content: 'ニュースの取得中にエラーが発生しました。', ephemeral: true }); 
         }
     }
 };
