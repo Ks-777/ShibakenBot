@@ -2,8 +2,6 @@ require('dotenv').config();
 const fs = require('fs');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
-const yn = require('latest-yahoo-news');
-const schedule = require('node-schedule');
 const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, } = require('discord.js');
 var client = new Client({
     intents: [
@@ -25,7 +23,6 @@ var client = new Client({
         Object.values(GatewayIntentBits).reduce((a, b) => a | b)
     ]
 });
-var sentMessages = new Set(); // メッセージを送ったユーザーIDのセット
 // コマンドファイル定義(処理用)
 const helpFile = require('./commands/help.js');
 const spaceFile = require('./commands/space.js');
@@ -33,57 +30,58 @@ const wadaiFile = require('./commands/wadai.js');
 const memberFile = require('./commands/member.js');
 const newsFile = require('./commands/news.js')
 // 初めてログイン検知時使用
-const log_msgFile = 'log-msg.json';
-// クールダウン用
-const cooldowns = new Map();
-
-var saveSentMessages = () => {
-    fs.writeFileSync(log_msgFile, JSON.stringify(Array.from(sentMessages)));
-};
-// データをファイルから読み込む関数
-const loadSentMessages = () => {
-    if (fs.existsSync(log_msgFile)) {
-        try {
-            const data = fs.readFileSync(log_msgFile, 'utf8');
-            if (data) {
-                sentMessages = new Set(JSON.parse(data));
-            }
-        } catch (error) {
-            console.error('Error reading or parsing sentMessages.json:', error);
-            sentMessages = new Set(); // エラーが発生した場合、新しいセットを初期化
+const loginDataFile = 'log-msg.json';
+// ログインデータを読み込む
+function loadLoginData() {
+    if (fs.existsSync(loginDataFile)) {
+        const rawData = fs.readFileSync(loginDataFile, 'utf8');
+        if (rawData) {
+            return JSON.parse(rawData);
         }
-    }    
-};
+    }
+    return {}; // ファイルが空または存在しない場合は空のオブジェクトを返す
+}
+// ログインデータを保存する
+function saveLoginData(data) {
+    fs.writeFileSync(loginDataFile, JSON.stringify(data, null, 2));
+}
+// 0時に全員のログインデータをリセットする関数
+function resetLoginDataAtMidnight() {
+    const now = new Date().toLocaleString('en-US', j_timezone);
+    const nowDate = new Date(now);
+    const midnight = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() + 1, 0, 0, 0);
+    const timeUntilMidnight = midnight - nowDate;
+
+    setTimeout(() => {
+        const loginData = {};
+        saveLoginData(loginData);
+        console.log('ログインデータをリセットしました。');
+
+        // 次の0時に再度リセットをスケジュール
+        resetLoginDataAtMidnight();
+    }, timeUntilMidnight);
+}
+
+// JST定義
+const j_timezone = {timeZone: 'Asia/Tokyo'};
+
 client.on('ready', () => {
     console.log(`Ready${client.user.tag}`);
     setInterval(() => {
         client.user.setActivity({
             name: `${client.ws.ping}ms|Shibaken!|/help`
         })
-    }, 10000)
-    checkChannelMessages();
-    loadSentMessages();
+    }, 5000)
+    resetLoginDataAtMidnight();
 });
-// interactionCreateイベントリスナーでコマンドを最初に処理する
 client.on(Events.InteractionCreate, async interaction => {
 
     // スラッシュコマンドが存在しない場合は何もしない(return)
     if (!interaction.isChatInputCommand()) return;
-    const now = Date.now();
-    const userId = interaction.user.id;
 
-    if (cooldowns.has(userId)) {
-        const expirationTime = cooldowns.get(userId) + 5000; // 5秒のクールダウンタイム
-        if (now < expirationTime) {
-            return interaction.reply({ content: 'スラッシュコマンドを実行するにはもう少し時間をおいてください。', ephemeral: true });
-        }
-    }
-    
-    // helpコマンドする処理
     if (interaction.commandName === helpFile.data.name) {
         try {
             await helpFile.execute(interaction);
-            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -96,7 +94,6 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === spaceFile.data.name) {
         try {
             await spaceFile.execute(interaction);
-            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -109,7 +106,6 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === wadaiFile.data.name) {
         try {
             await wadaiFile.execute(interaction);
-            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -122,7 +118,6 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === memberFile.data.name) {
         try {
             await memberFile.execute(interaction);
-            setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
@@ -135,17 +130,17 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === newsFile.data.name) {
         try {
             await newsFile.execute(interaction);
-          setTimeout(() => cooldowns.delete(userId), 5000); // 5秒後にクールダウンを解除
         } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            console.error(error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
             } else {
                 await interaction.reply({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
             }
         }
     }
-    });
+});
+
 
 client.on('messageCreate', message => {
     if (message.author.bot) return;
@@ -174,16 +169,10 @@ client.on('messageCreate', message => {
         // 変換されたメッセージを再送信
         message.channel.send(newMessageContent);
     }
+    const loginData = loadLoginData();
     const userId = message.author.id;
-    const now = new Date();
-    const japanOffset = 9 * 60 * 60 * 1000; // UTC+9時間
-    const japanTime = new Date(now.getTime() + japanOffset);
-    const today = japanTime.toDateString(); // 日本時間の今日の日付を取得
 
-    // ユーザーIDと日付を組み合わせたキーを作成
-    const key = `${userId}-${today}`;
-
-    if (!sentMessages.has(key)) {
+    if (!loginData[userId] || loginData[userId] === 0) {
         const url = `https://unbelievaboat.com/api/v1/guilds/1250416661522153553/users/${userId}`;
         const options = {
             method: 'PATCH',
@@ -198,65 +187,11 @@ client.on('messageCreate', message => {
             .then(res => res.json())
             .then(json => console.log(json))
             .catch(err => console.error('error:' + err));
-        if (!sentMessages.has(key)) {
-            sentMessages.add(key);
-            message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。3000チーをプレゼント!\``, allowedMentions: { repliedUser: false }});
-            saveSentMessages();
-        }
-}});
-const CHANNEL_ID = '1250416661522153556'; //この機能を使用するサーバーで機能を適用したいチャンネルのID
-const CHECK_INTERVAL = 10 * 1000; 
-const NO_MESSAGE_INTERVAL_5_MIN = 5 * 60 * 1000;
-const NO_MESSAGE_INTERVAL_10_MIN = 10 * 60 * 1000; 
-const NO_MESSAGE_INTERVAL_30_MIN = 30 * 60 * 1000;
-const NO_MESSAGE_INTERVAL_1_HOUR = 60 * 60 * 1000; 
-
-async function checkChannelMessages() {
-    const channel = await client.channels.fetch(CHANNEL_ID);
-    const messages = await channel.messages.fetch({ limit: 1 });
-    const lastMessage = messages.first();
-    const now = new Date();
-
-    // 日本時間で夜1時以降朝6時未満の時はメッセージを送らない
-    const japanOffset = 9 * 60 * 60 * 1000; // UTC+9時間
-    const japanTime = new Date(now.getTime() + japanOffset);
-    const hour = japanTime.getUTCHours();
-
-    if (hour >= 24 || hour < 7) {
-        // 日本時間で24時以降朝6時未満の時は処理を中断
-        setTimeout(checkChannelMessages, CHECK_INTERVAL);
-        return;
+        message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。3000チー(カジノBOT通貨)をプレゼント!\``, allowedMentions: { repliedUser: false }});
+        loginData[userId] = 1; // ログインを1に設定
+        saveLoginData(loginData);
     }
-    const lastMessageTimestamp = lastMessage ? lastMessage.createdTimestamp : 0;
-    
-    if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_1_HOUR) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else await channel.send('\`1時間メッセージがありませんでした\`\n\n# 圧　倒　的　過　疎\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    }
-    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_30_MIN)
-    {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-            else await channel.send('\`30分間メッセージがありませんでした\`\n\n# 過疎を過密に変えよう定期\n</wadai:1296469890227507283>で話題を生成して会話しよう')
-    }
-    else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_10_MIN) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-            else if (lastMessage.content.includes('10分'))  return;
-            else await channel.send('\`10分メッセージがありませんでした\`\n## 過密しよ\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    } else if (now - lastMessageTimestamp > NO_MESSAGE_INTERVAL_5_MIN) {
-        if (lastMessage.author.id === client.user.id) 
-            if (lastMessage.content.includes('1時間')) return;
-            else if (lastMessage.content.includes('30分')) return;
-            else if (lastMessage.content.includes('10分')) return;
-            else if (lastMessage.content.includes('過疎')) return;
-            else await channel.send('**過疎**\n</wadai:1296469890227507283>で話題を生成して会話しよう');
-    }
+});
 
-    setTimeout(checkChannelMessages, CHECK_INTERVAL)
-};
 //BOTの起動 tokenは.envに記述しておく
 client.login(token)
