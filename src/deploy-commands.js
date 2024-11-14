@@ -57,7 +57,24 @@ const commands = [
                     { name: 'エンタメ', value: 'entertainment' },
                     { name: '科学', value: 'science' },
                     { name: '国際', value: 'world' },
-                )),
+                ))
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('tyouhan')
+        .setDescription('ソロ丁半ゲームをします')
+		.addIntegerOption(option =>
+			option.setName('kakekin_tyouhan')
+                .setRequired(true)
+				.setDescription('掛け金(チー)を入力してください(カンマなし･数字のみ)'))
+        .addStringOption(option =>
+            option.setName('tyou_han')
+                .setDescription('偶数(丁) or 奇数(半)')
+                .setRequired(true)
+                .addChoices(
+                    { name: '丁', value: '0' },
+                    { name: '半', value: '1' },
+                ))
+        .toJSON(),
 ];
 async function main() {
     try {

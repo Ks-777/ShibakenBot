@@ -30,6 +30,7 @@ const spaceFile = require('./commands/space.js');
 const wadaiFile = require('./commands/wadai.js');
 const memberFile = require('./commands/member.js');
 const newsFile = require('./commands/news.js')
+const tyouhanFile = require('./commands/tyouhan.js')
 // 初めてログイン検知時使用
 const loginDataFile = 'log-msg.json';
 // ログインデータを読み込む
@@ -133,6 +134,18 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (interaction.commandName === newsFile.data.name) {
         try {
             await newsFile.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+            }
+        }
+    }
+    else if (interaction.commandName === tyouhanFile.data.name) {
+        try {
+            await tyouhanFile.execute(interaction);
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
