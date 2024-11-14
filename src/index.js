@@ -3,7 +3,7 @@ const fs = require('fs');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
 const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, } = require('discord.js');
-var client = new Client({
+const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
@@ -23,6 +23,7 @@ var client = new Client({
         Object.values(GatewayIntentBits).reduce((a, b) => a | b)
     ]
 });
+
 // コマンドファイル定義(処理用)
 const helpFile = require('./commands/help.js');
 const spaceFile = require('./commands/space.js');
@@ -65,15 +66,17 @@ function resetLoginDataAtMidnight() {
 // JST定義
 const j_timezone = {timeZone: 'Asia/Tokyo'};
 
+// ここでBOTが起動したときにさせたい処理
 client.on('ready', () => {
     console.log(`Ready${client.user.tag}`);
+    //ステータスの定期更新
     setInterval(() => {
         client.user.setActivity({
             name: `${client.ws.ping}ms|Shibaken!|/help`
         })
     }, 5000)
-    resetLoginDataAtMidnight();
 });
+
 client.on(Events.InteractionCreate, async interaction => {
 
     // スラッシュコマンドが存在しない場合は何もしない(return)
@@ -140,10 +143,10 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
-
-
 client.on('messageCreate', message => {
+    //ここまでBOT含める処理 or BOTのみの処理
     if (message.author.bot) return;
+    //この先はBOTお断り
     const twitterRegex = /https:\/\/twitter\.com\/\S+/g;
     const xRegex = /https:\/\/x\.com\/\S+/g;
 
@@ -192,6 +195,7 @@ client.on('messageCreate', message => {
         saveLoginData(loginData);
     }
 });
+
 
 //BOTの起動 tokenは.envに記述しておく
 client.login(token)
