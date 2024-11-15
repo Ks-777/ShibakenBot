@@ -157,9 +157,15 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 client.on('messageCreate', message => {
+
     //ここまでBOT含める処理 or BOTのみの処理
     if (message.author.bot) return;
     //この先はBOTお断り
+    // システムメッセージかどうかをチェック
+    if (message.system) {
+        console.log('This is a system message.');
+        return
+    }
     const twitterRegex = /https:\/\/twitter\.com\/\S+/g;
     const xRegex = /https:\/\/x\.com\/\S+/g;
 
