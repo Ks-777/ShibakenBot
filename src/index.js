@@ -1,5 +1,4 @@
 require('dotenv').config();
-const fs = require('fs');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
 const { Client, MessageEmbed, GatewayIntentBits, Events, Message , ChannelType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, } = require('discord.js');
@@ -32,7 +31,7 @@ const memberFile = require('./commands/member.js');
 const newsFile = require('./commands/news.js')
 const tyouhanFile = require('./commands/tyouhan.js')
 // 初めてログイン検知時使用
-const loginDataFile = 'log-msg.json';
+const loginDataFile = 'loginData.json';
 // ログインデータを読み込む
 function loadLoginData() {
     if (fs.existsSync(loginDataFile)) {
@@ -47,22 +46,33 @@ function loadLoginData() {
 function saveLoginData(data) {
     fs.writeFileSync(loginDataFile, JSON.stringify(data, null, 2));
 }
-// 0時に全員のログインデータをリセットする関数
+const fs = require('fs');
+const path = require('path');
+
+// ログインデータを保存する関数
+function saveLoginData(data) {
+    const loginDataFile = path.resolve(__dirname, 'loginData.json');
+    fs.writeFileSync(loginDataFile, JSON.stringify(data, null, 2));
+}
+
+// JSTの0時に全員のログインデータをリセットする関数
 function resetLoginDataAtMidnight() {
-    const now = new Date().toLocaleString('en-US', j_timezone);
-    const nowDate = new Date(now);
-    const midnight = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() + 1, 0, 0, 0);
-    const timeUntilMidnight = midnight - nowDate;
+    const now = new Date();
+    const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 15, 0, 0); // JSTの0時はUTCの15時
+    const timeUntilMidnight = utcMidnight - now.getTime();
 
     setTimeout(() => {
         const loginData = {};
         saveLoginData(loginData);
         console.log('ログインデータをリセットしました。');
 
-        // 次の0時に再度リセットをスケジュール
+        // 次のJSTの0時に再度リセットをスケジュール
         resetLoginDataAtMidnight();
     }, timeUntilMidnight);
 }
+
+// 初回実行
+resetLoginDataAtMidnight();
 
 // JST定義
 const j_timezone = {timeZone: 'Asia/Tokyo'};
@@ -73,7 +83,7 @@ client.on('ready', () => {
     //ステータスの定期更新
     setInterval(() => {
         client.user.setActivity({
-            name: `${client.ws.ping}ms|Shibaken!|/help`
+            name: `${client.ws.ping}ms|v1.0.0-R|/help`
         })
     }, 5000)
 });
@@ -157,15 +167,9 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 client.on('messageCreate', message => {
-
     //ここまでBOT含める処理 or BOTのみの処理
     if (message.author.bot) return;
     //この先はBOTお断り
-    // システムメッセージかどうかをチェック
-    if (message.system) {
-        console.log('This is a system message.');
-        return
-    }
     const twitterRegex = /https:\/\/twitter\.com\/\S+/g;
     const xRegex = /https:\/\/x\.com\/\S+/g;
 
