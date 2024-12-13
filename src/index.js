@@ -217,6 +217,40 @@ client.on('messageCreate', message => {
         loginData[userId] = 1; // ログインを1に設定
         saveLoginData(loginData);
     }
+    /* いろんな文字返信テンプレート 
+    メッセージがb又はcの時に反応するテンプレート
+    const a = ['b','c']
+    if (message.content == b || message.content == c){
+        message.reply({ content:`返信させたいメッセージ`, allowedMentions: { repliedUser: false }});
+    }
+
+    b又はcが含まれてるときに反応するテンプレート
+    const a = ['b','c']
+    if (message.content.includes(a)){
+        message.reply({ content:`返信させたいメッセージ`, allowedMentions: { repliedUser: false }});
+    }
+    
+    b又はcが文字列の最後にあるときに反応するテンプレート
+    const a = ['b','c']
+    if (message.content.endsWith(a)) {
+        message.reply({ content:`返信させたいメッセージ`, allowedMentions: { repliedUser: false }});
+    }
+    */
+
+    //特定の文字列に返信
+    const binzyo = ['かな','だよね','だよなぁ?','だよなぁ？','だよなぁ','だね','間違いない','だろ','なぁ？','なぁ?']
+    const wan = ['ワン','ワン！','ワン!']
+    const wan2 = ['ワンワン','ワンワン！','ワン！ワン！','ワン!ワン!','ワン!']
+    if (binzyo.some(bark => message.content.includes(bark))) {
+        message.reply({ content:`そうだワン！`, allowedMentions: { repliedUser: false }});
+        return;
+    }else if (wan2.some(bark => message.content.includes(bark))){
+        message.reply({ content:`ワンワン！`, allowedMentions: { repliedUser: false }});
+        return;
+    }else if (wan.some(bark => message.content.includes(bark))){
+        message.reply({ content:`ワン！`, allowedMentions: { repliedUser: false }});
+        return;
+    }
 });
 
 
