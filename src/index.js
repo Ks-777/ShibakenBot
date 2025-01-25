@@ -308,6 +308,7 @@ client.on('messageCreate', message => {
     const binzyo = ['かな','だよね','だよなぁ?','だよなぁ？','だよなぁ','だね','間違いない','だろ','なぁ？','なぁ?']
     const wan = ['ワン','ワン！','ワン!']
     const wan2 = ['ワンワン','ワンワン！','ワン！ワン！','ワン!ワン!','ワン!']
+    const nurupo = ['ぬるぽ']
     if (binzyo.some(bark => message.content.includes(bark))) {
         message.reply({ content:`そうだワン！`, allowedMentions: { repliedUser: false }});
         return;
@@ -316,6 +317,9 @@ client.on('messageCreate', message => {
         return;
     }else if (wan.some(bark => message.content.includes(bark))){
         message.reply({ content:`ワン！`, allowedMentions: { repliedUser: false }});
+        return;
+    }else if (nurupo.some(bark => message.content.includes(bark))){
+        message.reply({ content:`ガッ`, allowedMentions: { repliedUser: false }});
         return;
     }
 });
