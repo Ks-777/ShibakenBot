@@ -75,6 +75,10 @@ const commands = [
                     { name: '半', value: '1' },
                 ))
         .toJSON(),
+    new SlashCommandBuilder()
+        .setName('verify')
+        .setDescription('認証を開始')
+        .toJSON(),
 ];
 async function main() {
     try {
