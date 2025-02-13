@@ -359,6 +359,10 @@ module.exports = {
 				await updateRecruitmentEmbed(recruitment, interaction.client);
 				return interaction.reply({ content: '試合終了として処理しました。（待機状態）', ephemeral: true });
 			case 'bosyu_end':
+				// 最初のコマンド実行者(対象の募集の実行者)の場合のみ実行
+				if (interaction.user.id !== recruitment.user) {
+					return interaction.reply({ content: '作成者以外は募集終了できません。', ephemeral: true });
+				}
 				recruitment.status = 'closed';
 				await updateRecruitmentEmbed(recruitment, interaction.client);
 				// 募集終了後、情報を削除して/bosyu-infoに反映されないようにする
