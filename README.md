@@ -1,5 +1,6 @@
 # Shibaken!
 MIT license : Copyright © 2025 KS-777  
+Color：#e1b660  
 ## About
 DiscordBOTである「Shibaken」(BOT)の開発用リポジトリです。  
 Shibakenは現在DiscordGamersServerサーバーの専属BOTとして開発しています。   
