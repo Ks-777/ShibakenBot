@@ -119,6 +119,23 @@ const commands = [
                 .setRequired(false)
         )
         .toJSON(),
+    new SlashCommandBuilder()
+        .setName('pin')
+        .setDescription('【ADMIN ONLY】SHIBAPIN - ShibakenBOT')
+        .addStringOption(option =>
+            option.setName('pin_choice')
+                .setDescription('【ADMIN ONLY】Please choose PIN type')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Unlock', value: 'unlock' },
+                    { name: 'VERIFy', value: 'verify' },
+                    { name: 'NOrmAL', value: 'normal' },
+                    { name: 'TExT', value: 'text' },
+                    { name: 'Ex', value: 'ex' },
+                )
+        )
+        .toJSON(),
+    
 ];
 async function main() {
     try {

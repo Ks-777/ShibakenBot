@@ -13,7 +13,6 @@ module.exports = {
 			.addFields(
 			//更新用メモ: 1行目はinlineを記述しないでfalse扱いとし、2行目のみtrueとしこれを繰り返す
 			{ name: '/help', value: 'BOTのコマンドの一覧を表示します。' },
-			{ name: '/ping', value: 'pingを表示', inline: true },
 			{ name: '/space', value: 'すべての文字の間にスペースを入れて主張します' },
 			{ name: '/verify', value: '認証を開始します', inline: true },
 			{ name: '/member', value: 'サーバーのメンバー数を表示します' },

@@ -13,6 +13,9 @@ const tempReserveData = {};
 // 新規追加: 編集モーダル用一時保存オブジェクト（ユーザー単位で対象募集IDを保存）
 const tempEditData = {};
 
+// 新規追加: MOD用一時保存用オブジェクト
+const tempModData = {};
+
 // Embed を更新する関数（募集人数が0なら「無制限」に変換し、予約は各ユーザーの参加開始時刻も表示）
 async function updateRecruitmentEmbed(recruitment, client) {
 	try {
@@ -24,21 +27,23 @@ async function updateRecruitmentEmbed(recruitment, client) {
 			titlePrefix = '試合/開始中';
 		} else if (recruitment.status === 'game_end' || recruitment.status === 'closed') {
 			titlePrefix = '待機中';
+		} else if (recruitment.status === 'closed') {
+			titlePrefix = '募集終了';
 		} else {
-			titlePrefix = '募集中';
+			titlePrefix = 'nulll';
 		}
 		const newEmbed = new EmbedBuilder()
 			.setColor('Green')
 			.setTitle(`【${titlePrefix}】${recruitment.title}`)
 			.setDescription(
 				`【募集ID】: ${recruitment.id}\n` +
-				`ステータス: ${recruitment.status || '募集中'}\n\n` +
-				`**募集人数:**\n${recruitment.bosyuNum2 === 0 ? '無制限' : recruitment.bosyuNum2}\n` +
-				`**募集開始者:**\n<@${recruitment.user}>\n` +
-				(recruitment.mode === 'reservation' ? `**開始予定時刻:**\n${recruitment.startTime} ${recruitment.joinAfter === 'はい' ? '(参加後も開始可能)' : ''}\n` : '') +
-				`**詳細:**\n${recruitment.details}\n` +
-				`**参加コード(ID&URL):**\n||${recruitment.gameInfo}||\n` +
-				`**備考:**\n${recruitment.notes}`
+				`ステータス: ${recruitment.status || '募集中'}\n\n\n` +
+				`**募集人数:**\n${recruitment.bosyuNum2 === 0 ? '無制限' : recruitment.bosyuNum2}\n\n` +
+				`**募集開始者:**\n<@${recruitment.user}>\n\n` +
+				(recruitment.mode === 'reservation' ? `**開始予定時刻:**\n${recruitment.startTime} ${recruitment.joinAfter === 'はい' ? '(参加後も開始可能)' : ''}\n\n` : '') +
+				`**詳細:**\n${recruitment.details}\n\n` +
+				`**参加コード(ID&URL):**\n||${recruitment.gameInfo}||\n\n` +
+				`**備考:**\n${recruitment.notes}\n`
 			)
 			.addFields(
 				{ 
@@ -53,7 +58,10 @@ async function updateRecruitmentEmbed(recruitment, client) {
 						: 'なし',
 					inline: false 
 				}
-			);
+			)
+			.setFooter({ text: 'ゲームから退出した際は退出ボタンを押してください。(最近押さない人が増えています) - ShibakenBOT' })
+			.setTimestamp()
+			;
 		// 更新: reply メッセージ（従来のボタン付き）はそのまま更新（コンポーネントは変更しない）
 		const replyChannel = client.channels.cache.get(recruitment.replyInfo.channelId);
 		if(replyChannel) {
@@ -74,7 +82,7 @@ async function updateRecruitmentEmbed(recruitment, client) {
 				await pubMsg.delete();
 			} else {
 				const linkButton = new ButtonBuilder()
-					.setLabel('詳細はこちら')
+					.setLabel('参加/詳細はこちら')
 					.setStyle(ButtonStyle.Link)
 					.setURL(
 						`https://discord.com/channels/${recruitment.replyInfo.guildId}/${recruitment.replyInfo.channelId}/${recruitment.replyInfo.messageId}`
@@ -189,88 +197,100 @@ module.exports = {
 	},
 	// モーダル送信後の処理（募集作成）
 	async handleModalSubmit(interaction) {
-		// 変更: customId のチェックを 'bosyu_reservation_modal' に修正
-		const mode = interaction.customId === 'bosyu_reservation_modal' ? 'reservation' : 'immediate';
-		const details = interaction.fields.getTextInputValue('details');
-		const gameInfo = interaction.fields.getTextInputValue('gameInfo');
-		const notes = interaction.fields.getTextInputValue('notes');
-		let startTime = '', joinAfter = '';
-		if (mode === 'reservation') {
-			joinAfter = interaction.fields.getTextInputValue('joinAfter');
-			startTime = interaction.fields.getTextInputValue('startTime');
+		try {
+			// 変更: 必須情報が失われた場合にも例外を防止
+			const mode = interaction.customId === 'bosyu_reservation_modal' ? 'reservation' : 'immediate';
+			const details = interaction.fields.getTextInputValue('details');
+			const gameInfo = interaction.fields.getTextInputValue('gameInfo');
+			const notes = interaction.fields.getTextInputValue('notes');
+			let startTime = '', joinAfter = '';
+			if (mode === 'reservation') {
+				joinAfter = interaction.fields.getTextInputValue('joinAfter');
+				startTime = interaction.fields.getTextInputValue('startTime');
+			}
+			const tempData = tempModalData[interaction.user.id] || {};
+			delete tempModalData[interaction.user.id];
+			const recruitmentId = uuidv4();
+			const embed = new EmbedBuilder()
+				.setColor('Green')
+				.setTitle(`【募集中】${tempData.title || 'タイトル'}`)
+				.setDescription(
+					`【募集ID】: ${recruitmentId}\n` +
+					`ステータス: 募集中\n\n` +
+					`**募集人数:**\n${tempData.bosyuNum2 === 0 ? '無制限' : tempData.bosyuNum2}\n` +
+					`**募集開始者:**\n<@${interaction.user.id}>\n` +
+					(mode === 'reservation' ? `**開始予定時刻:** \n${startTime} ${joinAfter === 'はい' ? '(参加後も開始可能)' : ''}\n` : '') +
+					`**詳細:**\n${details}\n` +
+					`**参加コード(ID&URL):**\n||${gameInfo}||\n` +
+					`**備考:**\n${notes}`
+					
+				)
+				.addFields(
+					{ name: '参加者 (0人)', value: 'なし' },
+					{ name: '予約者 (0人)', value: 'なし' }
+				)
+				.setFooter({ text: 'ゲームから退出した際は退出ボタンを押してください。(最近押さない人が増えています) - ShibakenBOT' })
+				.setTimestamp()
+				;
+			// 変更: 公開メッセージは interaction.channel.send で送信
+			const buttons = [
+				new ButtonBuilder().setCustomId('bosyu_join').setLabel('参加').setStyle(ButtonStyle.Success).setEmoji('✅'),
+				new ButtonBuilder().setCustomId('bosyu_leave').setLabel('退出').setStyle(ButtonStyle.Danger).setEmoji('👋'),
+				new ButtonBuilder().setCustomId('bosyu_reserve').setLabel('予約').setStyle(ButtonStyle.Primary).setEmoji('⏰'),
+				new ButtonBuilder().setCustomId('bosyu_notifystart').setLabel('開始時通知').setStyle(ButtonStyle.Primary).setEmoji('🔔'),
+				new ButtonBuilder().setCustomId('bosyu_call_participants').setLabel('参加者呼び出し').setStyle(ButtonStyle.Secondary).setEmoji('🛎️'),
+				new ButtonBuilder().setCustomId('bosyu_call_reservers').setLabel('予約者呼び出し').setStyle(ButtonStyle.Secondary).setEmoji('🛎️'),
+				new ButtonBuilder().setCustomId('bosyu_game_start').setLabel('試合開始扱い').setStyle(ButtonStyle.Success).setEmoji('🟢'),
+				new ButtonBuilder().setCustomId('bosyu_game_end').setLabel('試合終了扱い').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+				new ButtonBuilder().setCustomId('bosyu_end').setLabel('募集終了').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+				new ButtonBuilder().setCustomId('bosyu_edit').setLabel('内容編集').setStyle(ButtonStyle.Secondary).setEmoji('⚙️')
+			];
+			// 新規追加: MOD専用ボタンを新しい行に追加
+			const modButton = new ButtonBuilder().setCustomId('bosyu_modkick').setLabel('MOD専用').setStyle(ButtonStyle.Secondary).setEmoji('🛠️');
+			const row1 = new ActionRowBuilder().addComponents(...buttons.slice(0, 5));
+			const row2 = new ActionRowBuilder().addComponents(...buttons.slice(5));
+			const row3 = new ActionRowBuilder().addComponents(modButton);
+			// 公開メッセージの送信
+			const replyMessage = await interaction.channel.send({ embeds: [embed], components: [row1, row2, row3] });
+			// 転載メッセージ送信
+			const pubChannel = interaction.client.channels.cache.get('1335880014373322760');
+			const linkButton = new ButtonBuilder()
+				.setLabel('詳細はこちら')
+				.setStyle(ButtonStyle.Link)
+				.setURL(`https://discord.com/channels/${replyMessage.guild.id}/${replyMessage.channel.id}/${replyMessage.id}`);
+			const linkRow = new ActionRowBuilder().addComponents(linkButton);
+			const pubMessage = await pubChannel.send({ embeds: [embed], components: [linkRow] });
+			// 掲示用情報の保存
+			recruitmentData[recruitmentId] = {
+				id: recruitmentId,
+				user: interaction.user.id,
+				mode,
+				details,
+				gameInfo,
+				notes,
+				startTime,
+				joinAfter,
+				title: tempData.title || 'タイトル',
+				bosyuNum2: tempData.bosyuNum2 || 0,
+				replyInfo: {
+					guildId: replyMessage.guild.id,
+					channelId: replyMessage.channel.id,
+					messageId: replyMessage.id
+				},
+				publishInfo: {
+					guildId: pubMessage.guild.id,
+					channelId: pubMessage.channel.id,
+					messageId: pubMessage.id
+				},
+				participants: [],
+				reservers: []
+			};
+			// 確認用 ephemeral reply を1回だけ実施
+			return interaction.reply({ content: `募集を作成しました。募集ID: ${recruitmentId}`, ephemeral: true });
+		} catch (error) {
+			console.error("handleModalSubmit error:", error);
+			return interaction.reply({ content: '募集フォームの処理中にエラーが発生しました。', ephemeral: true });
 		}
-		const tempData = tempModalData[interaction.user.id] || {};
-		delete tempModalData[interaction.user.id];
-		const recruitmentId = uuidv4();
-		const embed = new EmbedBuilder()
-			.setColor('Green')
-			.setTitle(`【募集中】${tempData.title || 'タイトル'}`)
-			.setDescription(
-				`【募集ID】: ${recruitmentId}\n` +
-				`ステータス: 募集中\n\n` +
-				`**募集人数:**\n${tempData.bosyuNum2 === 0 ? '無制限' : tempData.bosyuNum2}\n` +
-				`**募集開始者:**\n<@${interaction.user.id}>\n` +
-				(mode === 'reservation' ? `**開始予定時刻:** \n${startTime} ${joinAfter === 'はい' ? '(参加後も開始可能)' : ''}\n` : '') +
-				`**詳細:**\n${details}\n` +
-				`**参加コード(ID&URL):**\n||${gameInfo}||\n` +
-				`**備考:**\n${notes}`
-			)
-			.addFields(
-				{ name: '参加者 (0人)', value: 'なし' },
-				{ name: '予約者 (0人)', value: 'なし' }
-			);
-		// 変更: 公開メッセージは interaction.channel.send で送信
-		const buttons = [
-			new ButtonBuilder().setCustomId('bosyu_join').setLabel('参加').setStyle(ButtonStyle.Success).setEmoji('✅'),
-			new ButtonBuilder().setCustomId('bosyu_leave').setLabel('退出').setStyle(ButtonStyle.Danger).setEmoji('👋'),
-			new ButtonBuilder().setCustomId('bosyu_reserve').setLabel('予約').setStyle(ButtonStyle.Primary).setEmoji('⏰'),
-			new ButtonBuilder().setCustomId('bosyu_notifystart').setLabel('開始時通知').setStyle(ButtonStyle.Primary).setEmoji('🔔'),
-			new ButtonBuilder().setCustomId('bosyu_call_participants').setLabel('参加者呼び出し').setStyle(ButtonStyle.Secondary).setEmoji('🛎️'),
-			new ButtonBuilder().setCustomId('bosyu_call_reservers').setLabel('予約者呼び出し').setStyle(ButtonStyle.Secondary).setEmoji('🛎️'),
-			new ButtonBuilder().setCustomId('bosyu_game_start').setLabel('試合開始扱い').setStyle(ButtonStyle.Success).setEmoji('🟢'),
-			new ButtonBuilder().setCustomId('bosyu_game_end').setLabel('試合終了扱い').setStyle(ButtonStyle.Danger).setEmoji('❌'),
-			new ButtonBuilder().setCustomId('bosyu_end').setLabel('募集終了').setStyle(ButtonStyle.Danger).setEmoji('❌'),
-			new ButtonBuilder().setCustomId('bosyu_edit').setLabel('内容編集').setStyle(ButtonStyle.Secondary).setEmoji('⚙️')
-		];
-		const row1 = new ActionRowBuilder().addComponents(...buttons.slice(0, 5));
-		const row2 = new ActionRowBuilder().addComponents(...buttons.slice(5));
-		// 公開メッセージの送信
-		const replyMessage = await interaction.channel.send({ embeds: [embed], components: [row1, row2] });
-		// 転載メッセージ送信
-		const pubChannel = interaction.client.channels.cache.get('1335880014373322760');
-		const linkButton = new ButtonBuilder()
-			.setLabel('詳細はこちら')
-			.setStyle(ButtonStyle.Link)
-			.setURL(`https://discord.com/channels/${replyMessage.guild.id}/${replyMessage.channel.id}/${replyMessage.id}`);
-		const linkRow = new ActionRowBuilder().addComponents(linkButton);
-		const pubMessage = await pubChannel.send({ embeds: [embed], components: [linkRow] });
-		// 掲示用情報の保存
-		recruitmentData[recruitmentId] = {
-			id: recruitmentId,
-			user: interaction.user.id,
-			mode,
-			details,
-			gameInfo,
-			notes,
-			startTime,
-			joinAfter,
-			title: tempData.title || 'タイトル',
-			bosyuNum2: tempData.bosyuNum2 || 0,
-			replyInfo: {
-				guildId: replyMessage.guild.id,
-				channelId: replyMessage.channel.id,
-				messageId: replyMessage.id
-			},
-			publishInfo: {
-				guildId: pubMessage.guild.id,
-				channelId: pubMessage.channel.id,
-				messageId: pubMessage.id
-			},
-			participants: [],
-			reservers: []
-		};
-		// 確認用 ephemeral reply を1回だけ実施
-		return interaction.reply({ content: `募集を作成しました。募集ID: ${recruitmentId}`, ephemeral: true });
 	},
 	// 各種ボタン押下時の処理
 	async handleButton(interaction) {
@@ -289,6 +309,10 @@ module.exports = {
 		}
 		switch (customId) {
 			case 'bosyu_join':
+				// 新規追加: 予約状態の場合は予約一覧から削除
+				if (recruitment.reservers.find(obj => obj.id === interaction.user.id)) {
+					recruitment.reservers = recruitment.reservers.filter(obj => obj.id !== interaction.user.id);
+				}
 				if (!recruitment.participants.includes(interaction.user.id)) {
 					recruitment.participants.push(interaction.user.id);
 					await updateRecruitmentEmbed(recruitment, interaction.client);
@@ -297,59 +321,101 @@ module.exports = {
 					return interaction.reply({ content: '既に参加済みです。', ephemeral: true });
 				}
 			case 'bosyu_leave':
+				// 変更: 退出時に参加リストと予約リストの両方からユーザーを削除
 				recruitment.participants = recruitment.participants.filter(id => id !== interaction.user.id);
+				recruitment.reservers = recruitment.reservers.filter(obj => obj.id !== interaction.user.id);
 				await updateRecruitmentEmbed(recruitment, interaction.client);
-				return interaction.reply({ content: '参加リストから削除しました。', ephemeral: true });
+				return interaction.reply({ content: '参加および予約リストから削除しました。', ephemeral: true });
 			case 'bosyu_reserve': {
-				// 予約済みの場合は解除
-				const exists = recruitment.reservers.find(obj => obj.id === interaction.user.id);
-				if (exists) {
+				const reserved = recruitment.reservers.find(obj => obj.id === interaction.user.id);
+				const participated = recruitment.participants.includes(interaction.user.id);
+				if (reserved) {
+					// 予約状態なら取り消して参加に切り替え
 					recruitment.reservers = recruitment.reservers.filter(obj => obj.id !== interaction.user.id);
+					recruitment.participants.push(interaction.user.id);
 					await updateRecruitmentEmbed(recruitment, interaction.client);
-					return interaction.reply({ content: '予約を解除しました。', ephemeral: true });
+					return interaction.reply({ content: '予約から参加に切り替えました。', ephemeral: true });
 				}
-				// 参加中の場合は解除
-				if (recruitment.participants.includes(interaction.user.id)) {
+				if (participated) {
+					// 参加状態なら参加リストを削除し、以降の処理で予約モーダルを表示
 					recruitment.participants = recruitment.participants.filter(id => id !== interaction.user.id);
 				}
-				// 保存後、予約モーダル表示用に募集IDを一時保存
+				// 予約モーダル表示用：一時保存
 				tempReserveData[interaction.user.id] = recruitment.id;
 				const modal = new ModalBuilder()
 					.setCustomId('bosyu_reserve_time_modal')
-					.setTitle('予約参加情報入力')
-					.addComponents(
-						new ActionRowBuilder().addComponents(
-							new TextInputBuilder()
-								.setCustomId('reserveStartTime')
-								.setLabel('あなたは何時から参加できますか？ (例: 18:45)')
-								.setStyle(TextInputStyle.Short)
-                                .setRequired(true)
-						)
-					);
+					.setTitle('予約参加情報入力');
+				// 変更: 入力必須を解除し、未入力時は「時間未指定」とする
+				const timeInput = new TextInputBuilder()
+					.setCustomId('reserveStartTime')
+					.setLabel('参加可能な時間 (例: 18:45、未入力の場合は「時間未指定」)')
+					.setStyle(TextInputStyle.Short)
+					.setRequired(false);
+				modal.addComponents(new ActionRowBuilder().addComponents(timeInput));
 				return interaction.showModal(modal);
 			}
-            case 'bosyu_notifystart': {
-				// 通知は掲載メッセージのチャンネルではなく replyInfo のチャンネルへ送信
-				const notifyChannel = interaction.client.channels.cache.get(recruitment.replyInfo.channelId);
-				if (notifyChannel) {
-					await notifyChannel.send(`【${recruitment.title}】の試合開始通知: ${recruitment.participants.map(id => `<@${id}>`).join(', ')}`);
+			case 'bosyu_notifystart': {
+				// 開始通知処理
+				// まず、エフェメラルな返信を送信
+				await interaction.reply({ content: '予約を設定しました。開始時又は時間になったらお知らせします。', ephemeral: true });
+				
+				// 予約募集の場合は対象ユーザーを予約通知リストへ登録
+				if (recruitment.mode === 'reservation') {
+					// 新規プロパティ notifyList（なければ初期化）
+					if (!recruitment.notifyList) recruitment.notifyList = [];
+					if (!recruitment.notifyList.includes(interaction.user.id))
+						recruitment.notifyList.push(interaction.user.id);
+					
+					// 予定開始時刻の設定 (例："18:30" を HH:mm として)
+					const [hour, minute] = recruitment.startTime.split(':').map(Number);
+					const nowJST = new Date(new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }));
+					let scheduled = new Date(nowJST);
+					scheduled.setHours(hour, minute, 0, 0);
+					
+					// すでに開始時刻が過ぎている場合は即時通知（募集が未開始の場合）
+					if (nowJST > scheduled) {
+						if (recruitment.status !== 'game_start') {
+							const notifyChannel = interaction.client.channels.cache.get(recruitment.replyInfo.channelId);
+							if (notifyChannel) {
+								await notifyChannel.send(`<@${interaction.user.id}> 予約していた開始時刻 (${recruitment.startTime}) が過ぎましたが、募集はまだ開始されていません。`);
+							}
+						}
+					} else {
+						// 未到来の場合、予定時刻に合わせて通知する
+						const delay = scheduled.getTime() - nowJST.getTime();
+						setTimeout(async () => {
+							// 募集がまだ開始されていなければ通知
+							if (recruitment.status !== 'game_start') {
+								const notifyChannel = interaction.client.channels.cache.get(recruitment.replyInfo.channelId);
+								if (notifyChannel) {
+									await notifyChannel.send(`<@${interaction.user.id}> 予約していた開始時刻 (${recruitment.startTime}) になりました。`);
+								}
+							}
+						}, delay);
+					}
+				} else {
+					// 即時募集の場合、ボタン押下ごとに通知メッセージを送信
+					const notifyChannel = interaction.client.channels.cache.get(recruitment.replyInfo.channelId);
+					if (notifyChannel) {
+						await notifyChannel.send(`<@${interaction.user.id}> 開始通知: ${recruitment.title}`);
+					}
 				}
 				await updateRecruitmentEmbed(recruitment, interaction.client);
-				return interaction.reply({ content: '試合開始通知を実施しました。（通知は掲載チャンネル以外へ送信済みです）', ephemeral: true });
+				return;
 			}
 			case 'bosyu_call_participants':
-                // 最初のコマンド実行者(対象の募集の実行者)の場合のみ実行
-                if (interaction.user.id !== recruitment.user) {
-                    return interaction.reply({ content: '作成者以外は呼び出しできません。', ephemeral: true });
-                }
-				return interaction.reply({ content: `参加者へ呼び出し: ${recruitment.participants.map(id => `<@${id}>`).join(', ')}`, ephemeral: true });
+				// 作成者または管理者のみ実行
+				if (interaction.user.id !== recruitment.user && !interaction.member.permissions.has('ADMINISTRATOR')) {
+					return interaction.reply({ content: '作成者または管理者のみ呼び出し可能です。', ephemeral: true });
+				}
+				return interaction.reply({ content: `参加者へ呼び出し: ${recruitment.participants.map(id => `<@${id}>`).join(', ')}`});
 			case 'bosyu_call_reservers':
-                // 最初のコマンド実行者(対象の募集の実行者)の場合のみ実行
-                if (interaction.user.id !== recruitment.user) {
-                    return interaction.reply({ content: '作成者以外は呼び出しできません。', ephemeral: true });
-                }
+				// 作成者または管理者のみ実行
+				if (interaction.user.id !== recruitment.user && !interaction.member.permissions.has('ADMINISTRATOR')) {
+					return interaction.reply({ content: '作成者または管理者のみ呼び出し可能です。', ephemeral: true });
+				}
 				// 予約者は各ユーザーの参加開始時刻付きで表示
-				return interaction.reply({ content: `予約者へ呼び出し: ${recruitment.reservers.map(obj => `<@${obj.id}> (参加:${obj.startTime})`).join(', ')}`, ephemeral: true });
+				return interaction.reply({ content: `予約者へ呼び出し: ${recruitment.reservers.map(obj => `<@${obj.id}> (参加:${obj.startTime})`).join(', ')}`});
 			case 'bosyu_game_start':
 				recruitment.status = 'game_start';
 				await updateRecruitmentEmbed(recruitment, interaction.client);
@@ -359,9 +425,9 @@ module.exports = {
 				await updateRecruitmentEmbed(recruitment, interaction.client);
 				return interaction.reply({ content: '試合終了として処理しました。（待機状態）', ephemeral: true });
 			case 'bosyu_end':
-				// 最初のコマンド実行者(対象の募集の実行者)の場合のみ実行
-				if (interaction.user.id !== recruitment.user) {
-					return interaction.reply({ content: '作成者以外は募集終了できません。', ephemeral: true });
+				// 募集終了は募集作成者または管理者のみ実行可能
+				if (!(interaction.user.id === recruitment.user || interaction.member.permissions.has('ADMINISTRATOR'))) {
+					return interaction.reply({ content: '募集作成者または管理者のみ募集終了できます。', ephemeral: true });
 				}
 				recruitment.status = 'closed';
 				await updateRecruitmentEmbed(recruitment, interaction.client);
@@ -369,9 +435,9 @@ module.exports = {
 				delete recruitmentData[recruitment.id];
 				return interaction.reply({ content: '募集終了としました。', ephemeral: true });
 			case 'bosyu_edit': {
-				// 編集は募集作成者のみ許可
-				if (interaction.user.id !== recruitment.user) {
-					return interaction.reply({ content: '作成者以外は編集できません。', ephemeral: true });
+				// 編集は募集作成者または管理者のみ許可
+				if (interaction.user.id !== recruitment.user && !interaction.member.permissions.has('ADMINISTRATOR')) {
+					return interaction.reply({ content: '募集作成者または管理者のみ編集できます。', ephemeral: true });
 				}
 				tempEditData[interaction.user.id] = recruitment.id;
 				// 編集用モーダル。予約募集なら追加項目付き
@@ -428,28 +494,49 @@ module.exports = {
 				}
 				return interaction.showModal(modal);
 			}
+			case 'bosyu_modkick':
+				// 管理者専用
+				if (!interaction.member.permissions.has('ADMINISTRATOR')) {
+					return interaction.reply({ content: '管理者専用です。', ephemeral: true });
+				}
+				// 一時保存
+				tempModData[interaction.user.id] = recruitment.id;
+				const modModal = new ModalBuilder()
+					.setCustomId('bosyu_modkick_modal')
+					.setTitle('MOD専用：対象ユーザー退出処理');
+				const modInput = new TextInputBuilder()
+					.setCustomId('mod_userID')
+					.setLabel('ユーザーIDまたはタグを入力')
+					.setStyle(TextInputStyle.Short)
+					.setPlaceholder('例: 1234567890 または @username');
+				modModal.addComponents(new ActionRowBuilder().addComponents(modInput));
+				return interaction.showModal(modModal);
 			default:
 				return interaction.reply({ content: '未対応のボタンです。', ephemeral: true });
 		}
 	},
 	// モーダル送信後：予約ボタン用モーダルからの処理
 	async handleReserveModalSubmit(interaction) {
-		const reserveStartTime = interaction.fields.getTextInputValue('reserveStartTime');
-		// 入力形式の検証: HH:MM 形式かつ有効な時刻かをチェック
-		const timeRegex = /^(\d{1,2}):(\d{2})$/;
-		const match = reserveStartTime.match(timeRegex);
-		if (!match || parseInt(match[1], 10) >= 24) {
-			return interaction.reply({ content: '時間の入力形式が正しくありません。正しい形式は HH:MM (例: 18:45) です。', ephemeral: true });
-		}
+		let reserveStartTime = interaction.fields.getTextInputValue('reserveStartTime').trim();
+        // 入力がある場合は hh:mm の形式チェック
+        if (reserveStartTime !== '') {
+            // 正規表現: 時刻の形式 hh:mm (hh: 0～23, mm: 0～59)
+            const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+            const match = reserveStartTime.match(timeRegex);
+            if (!match) {
+                return interaction.reply({ content: '時間の入力形式が正しくありません。正しい形式は hh:mm (例: 18:45) です。', ephemeral: true });
+            }
+        } else {
+            reserveStartTime = '時間不明';
+        }
 		const userId = interaction.user.id;
 		const recruitmentId = tempReserveData[userId];
 		if (!recruitmentId || !recruitmentData[recruitmentId]) {
 			return interaction.reply({ content: '該当する募集が見つかりません。', ephemeral: true });
 		}
 		const recruitment = recruitmentData[recruitmentId];
-		// 予約情報を追加（同じユーザーが複数回予約しないようチェックも可能）
+		// 予約情報を追加
 		recruitment.reservers.push({ id: userId, startTime: reserveStartTime });
-		// 募集メッセージのEmbedを更新
 		await updateRecruitmentEmbed(recruitment, interaction.client);
 		delete tempReserveData[userId];
 		return interaction.reply({ content: '予約情報を更新しました。', ephemeral: true });
@@ -513,6 +600,33 @@ module.exports = {
 			console.error('Edit Modal submission error:', error);
 			await interaction.reply({ content: "編集モーダルの処理に失敗しました。", ephemeral: true });
 		}
+	},
+	// 新規追加: MOD専用モーダル送信後の処理
+	async handleModKickModalSubmit(interaction) {
+		const userId = interaction.user.id;
+		const recruitmentId = tempModData[userId];
+		if (!recruitmentId || !recruitmentData[recruitmentId]) {
+			return interaction.reply({ content: '該当する募集が見つかりません。', ephemeral: true });
+		}
+		const recruitment = recruitmentData[recruitmentId];
+		let input = interaction.fields.getTextInputValue('mod_userID').trim();
+		// ユーザーIDとして数字部分を抽出
+		const idMatch = input.match(/\d+/);
+		if (!idMatch) {
+			return interaction.reply({ content: '有効なユーザーIDまたはタグが入力されていません。', ephemeral: true });
+		}
+		const targetId = idMatch[0];
+		const wasParticipant = recruitment.participants.includes(targetId);
+		const wasReserver = recruitment.reservers.some(obj => obj.id === targetId);
+		if (!wasParticipant && !wasReserver) {
+			return interaction.reply({ content: '指定されたユーザーは参加または予約済みではありません。', ephemeral: true });
+		}
+		// 該当ユーザーを削除
+		recruitment.participants = recruitment.participants.filter(id => id !== targetId);
+		recruitment.reservers = recruitment.reservers.filter(obj => obj.id !== targetId);
+		await updateRecruitmentEmbed(recruitment, interaction.client);
+		delete tempModData[userId];
+		return interaction.reply({ content: '対象ユーザーを退出処理しました。', ephemeral: true });
 	},
 	// 外部参照用：特定募集の取得
 	getRecruitment(recruitmentId) {

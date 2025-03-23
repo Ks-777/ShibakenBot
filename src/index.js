@@ -1,10 +1,16 @@
 /*以下 公開してもいいBOTの変数*/ 
-const botver = '2.0.0-F'; // バージョン
+const botver = '2.0.0[Ex]'; // バージョン
 /*Ver取り決め
 A: アルファ(Alpha)
 B: ベータ(Bata)
 F: 未来の機能(ベータと同等)(Future)
 R: 安定版(Release)
+NExT: 新世代(Next)
+-下記歴代スペシャルバージョン一覧-
+Ex: すごいバージョン(Extend) - v2.0.0
+Nx: 新世代(Next) - v3.0.0
+SSR: ｽｰﾊﾟｰｽﾍﾟｼｬﾙﾚｱ(?) - v4.0.0
+USSR: ｳﾙﾄﾗｽｰﾊﾟｰｽﾍﾟｼｬﾙﾚｱ(?) - v5.0.0
 ------------
 〇.△.◇
 〇: 大きな変更
@@ -15,6 +21,7 @@ R: 安定版(Release)
 /*以上 公開してもいいBOTの変数*/
 require('dotenv').config();
 const fs = require('fs');
+const fetch = require('node-fetch');
 const token = process.env.token;
 const token_unb = process.env.token_unb;
 const { Client, GatewayIntentBits, Events, ChannelType, EmbedBuilder } = require('discord.js');
@@ -43,39 +50,55 @@ const { Captcha } = require("discord.js-captcha");
 // 認証設定
 const UnVerifyRoleID = '1250418930821107712'; // 削除するロールのID
 const memberRoleID = '1250418409854730263'; // 付与するロールのID
-// todo : 認証をライブラリに直で実装してボタンを押しても何をやってもEmbedに名前が入るような処理にする
-const captcha = new Captcha (client,{
+// 認証しているユーザー名をEmbedのタイトルに反映するため、埋め込み内で {member} のようなテンプレート文字列を使用します。
+const captcha = new Captcha(client, {
     roleID: `${memberRoleID}`, //optional
-    channelID: '1267404959406882929', // 認証チャンネルのIDを入れています / optional
+    channelID: '1267404959406882929', // 認証チャンネルのIDを指定 / optional
     sendToTextChannel: false, //optional, defaults to false
-    addRoleOnSuccess: true, //optional, defaults to true. whether you want the bot to add the role to the user if the captcha is solved
-    kickOnFailure: false, //optional, defaults to true. whether you want the bot to kick the user if the captcha is failed
-    caseSensitive: true, //optional, defaults to true. whether you want the captcha responses to be case-sensitive
-    attempts: 3, //optional, defaults to 1. number of attempts before captcha is considered to be failed
-    timeout: 30000, //optional, defaults to 60000. time the user has to solve the captcha on each attempt in milliseconds
-    showAttemptCount: true, //optional, defaults to true. whether to show the number of attempts left in embed footer
-    customPromptEmbed: new EmbedBuilder()    
-        .setTitle('認証を開始 - [DGS]DiscordGamersServer')
+    addRoleOnSuccess: true, //optional, defaults to true. ロール付与を行うかどうか
+    kickOnFailure: false, //optional, defaults to true. 認証失敗時にキックするかどうか
+    caseSensitive: false, //optional, defaults to true. 大文字小文字の区別をするかどうか
+    attempts: 334, //optional, defaults to 1. 失敗許容回数
+    timeout: 60000, // 修正: timeoutを十分な値（例:60000ms）に変更
+    showAttemptCount: true, //optional, defaults to true. 試行回数をEmbedフッターに表示するかどうか
+    customPromptEmbed: new EmbedBuilder()
+        .setTitle('認証を開始 - {member}さん - [DGS]DiscordGamersServer')
         .setColor('Blue')
-        .setDescription(`ご参加ありがとうございます。\n以下の認証を行うと、[ルール<:url_icon:1325309186963148881>](https://discord.com/channels/1250416661522153553/1250416826513358951)に同意することとなります。\nルールをご確認されてから、以下の画像に表示されている文字列を入力してください。`)
-        .setAuthor({name: 'DGS - DiscordGamersServer 運営BOT',})
-        .setTimestamp()
-        , //customise the embed that will be sent to the user when the captcha is requested
+        .setDescription(`ご参加ありがとうございます。\n以下の認証を行うと、[ルール<:url_icon:1325309186963148881>](https://discord.com/channels/1250416661522153553/1250416826513358951)に同意することとなります。\nルールをご確認の上、以下の画像に表示されている文字列を入力してください。`)
+        .setAuthor({ name: 'DGS - DiscordGamersServer 運営BOT' })
+        .setFooter({ text: 'TIPS:大文字小文字関係なく入力可能' })
+        .setTimestamp(),
     customSuccessEmbed: new EmbedBuilder()
-        .setTitle('認証に成功 - [DGS]DiscordGamersServer')
+        .setTitle('認証に成功 - {member}さん - [DGS]DiscordGamersServer')
         .setColor('Green')
-        .setDescription('雑談やゲーム関係の会話や募集、ミニゲーム(経済カテゴリ)などがご利用いただけます。\nこれからも当サーバーをよろしくお願いいたします。')
-        .setAuthor({name: 'DGS - DiscordGamersServer 運営BOT',})
-        .setTimestamp()
-        , //customise the embed that will be sent to the user when the captcha is solved
+        .setDescription('雑談やゲーム関係の会話や募集、ミニゲーム(経済カテゴリ)などをご利用いただけます。\nこれからも当サーバーをよろしくお願いいたします。')
+        .setAuthor({ name: 'DGS - DiscordGamersServer 運営BOT' })
+        .setTimestamp(),
     customFailureEmbed: new EmbedBuilder()
-        .setTitle('認証に失敗 - [DGS]DiscordGamersServer')
+        .setTitle('認証に失敗 - {member}さん - [DGS]DiscordGamersServer')
         .setColor('Red')
-        .setDescription('一度正しいか確認してから再度お試しください。\n(3回失敗すると、キックされます。)')
-        .setAuthor({name: 'DGS - DiscordGamersServer 運営BOT',})
-        .setTimestamp()
-        , //customise the embed that will be sent to the user when they fail to solve the captcha
+        .setDescription('正しい文字列かご確認の上、再度お試しください。\n(3回失敗すると、キックされます。)')
+        .setAuthor({ name: 'DGS - DiscordGamersServer 運営BOT' })
+        .setTimestamp(),
 });
+// キャプチャ処理の前に、captcha.present() をパッチして動的置換を行う
+const originalPresent = captcha.present.bind(captcha);
+captcha.present = async function(member, customCaptcha) {
+    // 各Embedをクローンしてタイトルの {member} を実際のdisplayNameに置換
+    if (this.options.customPromptEmbed) {
+        this.options.customPromptEmbed = new EmbedBuilder(this.options.customPromptEmbed)
+            .setTitle(this.options.customPromptEmbed.data.title.replace('{member}', member.displayName));
+    }
+    if (this.options.customSuccessEmbed) {
+        this.options.customSuccessEmbed = new EmbedBuilder(this.options.customSuccessEmbed)
+            .setTitle(this.options.customSuccessEmbed.data.title.replace('{member}', member.displayName));
+    }
+    if (this.options.customFailureEmbed) {
+        this.options.customFailureEmbed = new EmbedBuilder(this.options.customFailureEmbed)
+            .setTitle(this.options.customFailureEmbed.data.title.replace('{member}', member.displayName));
+    }
+    return originalPresent(member, customCaptcha);
+};
 // コマンドファイル定義(処理用)
 const helpFile = require('./commands/help.js');
 const spaceFile = require('./commands/space.js');
@@ -88,6 +111,8 @@ const embedFile = require('./commands/embed.js');
 const bosyuFile = require('./commands/bosyu.js');
 const bosyuInfoFile = require('./commands/bosyu-info.js');
 const msgCounter = require('./msgCounter');
+const pinFile = require('./commands/pin.js');
+
 
 // 初めてログイン検知時使用
 const loginDataFile = 'loginData.json';
@@ -101,8 +126,6 @@ function loadLoginData() {
     }
     return {}; // ファイルが空または存在しない場合は空のオブジェクトを返す
 }
-
-// Removed unused modules: path, diagnostics_channel and error from console.
 
 // ログインデータを保存する関数
 function saveLoginData(data) {
@@ -171,7 +194,7 @@ client.on('ready', () => {
 // 追加: Unknown interaction エラーをハンドルするためのラッパー関数
 async function safeReply(interaction, options) {
     try {
-        // 返信前に必ず deferReply を実施（既に返信済みの場合は不要）
+        // 返信前に必ず deferReply を実施（既に返信済みの場合は不要） 
         if (!interaction.deferred && !interaction.replied) {
             await interaction.deferReply({ ephemeral: true });
         }
@@ -185,9 +208,39 @@ async function safeReply(interaction, options) {
     }
 }
 
+// 追加: ユーザーごとのコマンド実行記録（過去60秒以内のタイムスタンプ）と直前の実行情報
+const userCommandTimestamps = {}; // { [userId]: number[] }
+const userLastCommand = {}; // { [userId]: { timestamp: number, command: string } }
+
 client.on(Events.InteractionCreate, async interaction => {
     try {
         if (interaction.isChatInputCommand()) {
+            const userId = interaction.user.id;
+            const now = Date.now();
+
+            // 過去60秒以内の記録を更新
+            if (!userCommandTimestamps[userId]) userCommandTimestamps[userId] = [];
+            userCommandTimestamps[userId] = userCommandTimestamps[userId].filter(ts => now - ts < 60000);
+            
+            // 1分間に20回以上の実行チェック
+            if (userCommandTimestamps[userId].length >= 20) {
+                return interaction.reply({ content: '1分間に20回以上の実行があったため、クールタイム中です。', ephemeral: true });
+            }
+            
+            // 直前実行チェック（全コマンド共通: 3秒以内） 
+            if (userLastCommand[userId] && (now - userLastCommand[userId].timestamp < 3000)) {
+                return interaction.reply({ content: 'コマンドの連続実行は3秒間隔以上空けてください。', ephemeral: true });
+            }
+            // 同じコマンドの直前実行チェック: 5秒以内は実行しない
+            if (userLastCommand[userId] && userLastCommand[userId].command === interaction.commandName && (now - userLastCommand[userId].timestamp < 5000)) {
+                return interaction.reply({ content: '同じコマンドは5秒以内に再実行できません。', ephemeral: true });
+            }
+            
+            // 記録更新
+            userCommandTimestamps[userId].push(now);
+            userLastCommand[userId] = { timestamp: now, command: interaction.commandName };
+
+            //ここからコマンド処理
             if (interaction.commandName === helpFile.data.name) {
                 await helpFile.execute(interaction);
             } else if (interaction.commandName === spaceFile.data.name) {
@@ -208,6 +261,8 @@ client.on(Events.InteractionCreate, async interaction => {
                 await bosyuFile.execute(interaction);
             } else if (interaction.commandName === bosyuInfoFile.data.name) {
                 await bosyuInfoFile.execute(interaction);
+            } else if (interaction.commandName === pinFile.data.name) {
+                await pinFile.execute(interaction);
             } /*この上までにコマンド処理 → それでも見つからない場合*/else {
                 await safeReply(interaction, { content: 'コマンドが見つかりませんでした。', ephemeral: true });
             }
@@ -217,13 +272,17 @@ client.on(Events.InteractionCreate, async interaction => {
         else if (interaction.isModalSubmit()) {
             // 追加: モーダル送信の場合のルーティング
             const bosyu = require('./commands/bosyu.js');
+            const pin = require('./commands/pin.js');
             if (interaction.customId === 'bosyu_reservation_modal' || interaction.customId === 'bosyu_immediate_modal') {
                 return bosyu.handleModalSubmit(interaction);
             } else if (interaction.customId === 'bosyu_reserve_time_modal') {
                 return bosyu.handleReserveModalSubmit(interaction);
             } else if (interaction.customId === 'bosyu_edit_modal') {
                 return bosyu.handleEditModalSubmit(interaction);
+            } else if (interaction.customId === 'pin_normal') {
+                return pin.handleNormalModalSubmit(interaction);
             }
+
         }
         //ボタン処理
         else if (interaction.isButton()) {
@@ -236,8 +295,18 @@ client.on(Events.InteractionCreate, async interaction => {
             else if (interaction.customId.startsWith("bosyu_")) {
                 await bosyuFile.handleButton(interaction);
             } else if (interaction.customId === 'verify') {
-                // 修正: member ではなく interaction.member を渡す
-                captcha.present(interaction.member);
+                try {
+                    await captcha.present(interaction.member);
+                } catch (err) {
+                    if (err.code === 50007) {
+                        // DM送信不可の場合、sendToTextChannel を有効化して再送信
+                        captcha.options.sendToTextChannel = true;
+                        await captcha.present(interaction.member);
+                    } else {
+                        console.error(err);
+                    }
+                }
+                return;
             }
         }
         //メッセージ系はindex.js下部に記述
@@ -263,7 +332,7 @@ async function channelPanelMemberCounter(){
     const unverifiedSize = memberSize - verifiedSize;
     // その後、フォーマット文字列を作成
     const memberformat = `┠メンバー数: ${memberSize}`;
-    const roleformat = `┗内認証|済:${verifiedSize}|未:${unverifiedSize}`;
+    const roleformat = `┠内認証|済:${verifiedSize}|未:${unverifiedSize}`;
     
     const memberChannel = client.channels.cache.get(memberChannelId);
     if (memberChannel) {
@@ -299,6 +368,12 @@ client.on('guildMemberAdd', member => {
     
     captcha.present(member);
     // メンバー数表示パネル更新(2)
+});
+captcha.on('failure', async data => {
+    const displayName = data.member.displayName;
+    const memberTag = data.member.user.username;
+    const fullName = `${displayName} (${memberTag})`;
+    console.log(`${fullName} さんが認証に失敗しました。`);
 });
 captcha.on('success', async data => {
     const channelId = '1250416661522153556';
@@ -362,104 +437,138 @@ captcha.on('success', async data => {
 
     logChannel.send({ embeds: [logEmbed] });
     channel.send({ content: `<@${memberId}>さんようこそ！`, embeds: [welcomeMessage] });
-    console.log(data);
+    console.log(`${fullName} さんが認証を完了しました。`);
 });
 
+// 追加: 過疎通知用の監視変数・閾値
+/* 暫くの間、過疎通知をオフにして運用
+const inactivityData = {
+	'1250416661522153556': { lastActivity: Date.now(), triggered: {} },
+	'1258327116035002378': { lastActivity: Date.now(), triggered: {} }
+};
+
+const thresholds = [
+	{ time: 15 * 60 * 1000, label: "15分" },
+	{ time: 30 * 60 * 1000, label: "30分" },
+	{ time: 60 * 60 * 1000, label: "1時間" },
+	{ time: 3 * 60 * 1000, label: "3時間" },
+	{ time: 8 * 60 * 1000, label: "8時間" }
+];
+
+// 追加: 1分毎に過疎チェックを実行
+setInterval(() => {
+	const now = Date.now();
+	// 現在のJST時刻（0～23）を取得
+	const currentHour = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+	const hour = new Date(currentHour).getHours();
+	// 除外時間帯: 深夜(2～7) および 平日日中(9～15)
+	const isExcluded = (hour >= 2 && hour < 7) || (hour >= 9 && hour < 15);
+
+	['1250416661522153556', '1258327116035002378'].forEach(channelId => {
+		const data = inactivityData[channelId];
+		// 除外時間帯ならタイマーリセット
+		if(isExcluded){
+			data.lastActivity = now;
+			data.triggered = {};
+			return;
+		}
+		const elapsed = now - data.lastActivity;
+		thresholds.forEach(threshold => {
+			if(elapsed >= threshold.time && !data.triggered[threshold.time]){
+				// 送信済みマークをセット
+				data.triggered[threshold.time] = true;
+				const channel = client.channels.cache.get(channelId);
+				if(!channel) return;
+				// 夜･深夜帯: (23～24 または 0～9)の場合Embedで送信
+                const messages = [
+                    "サーバーの心肺が停止！ そこのあなた！AED(過密)を！",
+                    "過疎だｱｱｱｱｱｱｱｱｱｱｱｱｱｱｱｱ ﾄﾞｯｯｶｧｱﾝ(爆死)",
+                    "過疎だよ(´・ω・｀)",
+                    "(過疎だから)乗るしかないよね、このビックウェーブに。",
+                    "過疎ｿｿｿｿｿｿｿｿ(バグ発生)",
+                    "ｶ....ｿ.......(遺言)"
+                ];
+                const kasomsg = messages[Math.floor(Math.random() * messages.length)];
+				if(hour >= 23 || hour < 9){
+					const embed = new EmbedBuilder()
+						.setTitle(`${kasomsg} - 過疎通知`)
+						.setDescription(`${threshold.label}間、会話がありません…皆さん、ゆっくりお休みですか？`)
+						.setColor('DarkBlue')
+						.setTimestamp();
+					channel.send({ content: '過疎通知 - Shibaken', embeds: [embed] });
+				} else {
+                    const embed = new EmbedBuilder()
+                        .setTitle(`【${threshold.label}】${kasomsg} - 過疎通知`)
+                        .setDescription(`最近、${threshold.label}間会話がないようです。盛り上げてみませんか？`)
+					channel.send(`最近、${threshold.label}間会話がないようです。盛り上げてみませんか？`);
+				}
+			}
+		});
+	});
+}, 60 * 1000);
+*/
 client.on('messageCreate', message => {
+    // BOTのメッセージなどの仕分けはhandleMessage内で行うため、BOTを跳ね返す前に実装
     msgCounter.handleMessage(message);
-    //BOT含める処理 or BOTのみの処理
-    if (message.author.id === '761562078095867916' && message.content.startsWith('/dissoku up')) {
-        // サブコマンドの処理をここに記述
-        message.reply({ content: 'サブコマンドが実行されました。', allowedMentions: { repliedUser: false } });
-    }
-    //ここまでBOT含める処理 or BOTのみの処理
     if (message.author.bot) return;
-    //この先はBOTお断り
-    const twitterRegex = /https:\/\/twitter\.com\/\S+/g;
-    const xRegex = /https:\/\/x\.com\/\S+/g;
-
-    let newMessageContent = message.content;
-    // メッセージ送信者のメンションを取得
-    const messageAuthor = `<@${message.author.id}>`;
-    // Twitter URLの変換
-    newMessageContent = newMessageContent.replace(twitterRegex, (url) => {
-        const newUrl = url.replace('twitter.com', 'fxtwitter.com');
-        return `${messageAuthor}が送信\n[PostURL](${newUrl})`;
-    });
-
-    // X URLの変換
-    newMessageContent = newMessageContent.replace(xRegex, (url) => {
-        const newUrl = url.replace('x.com', 'fixupx.com');
-        return `${messageAuthor}が送信\n[PostURL](${newUrl})`;
-    });
-
-    if (newMessageContent !== message.content) {
-        // 元のメッセージを削除
+    const messageContent = message.content;
+    /*twitter.comとx.comをそれぞれfxtwitter.comとfixupx.comに変換 
+    更にそれが含まれていたメッセージを消し変換したURLと一緒に送信
+    (例：https://twitter.com/hoge/fuga → https://fxtwitter.com/hoge/fuga)
+    */
+    const fixedMessage = messageContent.replace(/twitter\.com/g, 'fxtwitter.com').replace(/x\.com/g, 'fixupx.com');
+    if (messageContent !== fixedMessage) {
         message.delete().catch(console.error);
-
-        // 変換されたメッセージを再送信
-        message.channel.send(newMessageContent);
+        const msgch = client.channels.cache.get(message.channel.id);
+        const convertedUrls = (fixedMessage.match(/https:\/\/(?:fxtwitter\.com|fixupx\.com)\/\S+/g) || []).join('\n');
+        const originalMsgWithoutUrls = messageContent.replace(/https:\/\/(?:twitter\.com|x\.com)\/\S+/g, '').trim() || 'なし';
+        const urlEmbed = new EmbedBuilder()
+            .setTitle(`${message.member.displayName} - Twitter/X URL変換`)
+            .setDescription('TwitterやXのURLを自動で特殊Embedつきに変換しています\n(https://fxtwitter.com/)')
+            .addFields(
+                { name: '元メッセージ', value: originalMsgWithoutUrls, inline: true }
+            )
+            .setColor('Green')
+            .setTimestamp();
+        // Only send URL message if there is non-empty content
+        if (convertedUrls.trim() !== "") {
+            msgch.send({ content: `${convertedUrls}` });
+        }
+        msgch.send({ embeds: [urlEmbed] });
     }
+    // ログインボーナス処理（初回ログイン時）
     const loginData = loadLoginData();
     const userId = message.author.id;
-
-    if (!loginData[userId] || loginData[userId] === 0) {
-        if (message.channel.type === ChannelType.DM) {
-            return};
-        const url = `https://unbelievaboat.com/api/v1/guilds/1250416661522153553/users/${userId}`;
-        const options = {
-            method: 'PATCH',
-            headers: {
-                accept: 'application/json',
-                'content-type': 'application/json',
-                Authorization: `${token_unb}`
-            },
-            body: JSON.stringify({cash: 3000})
+    if (!message.author.bot && (!loginData[userId] || loginData[userId] === 0)) {
+        if (message.channel.type !== ChannelType.DM) {
+            const housyu = 3000;
+            // Unbelievaboatのボーナス処理(API)
+            const url = `https://unbelievaboat.com/api/v1/guilds/1250416661522153553/users/${userId}`;
+            const options = {
+                method: 'PATCH',
+                headers: {
+                    accept: 'application/json',
+                    'content-type': 'application/json',
+                    Authorization: `${token_unb}`
+                },
+                body: JSON.stringify({ cash: housyu })
+            };
+            fetch(url, options)
+                .then(res => res.json())
+                .then(json => console.log(json))
+                .catch(err => console.error('error:' + err));
+            const lbembed = new EmbedBuilder()
+                .setTitle('ログインありがとうございます - ログインボーナス')
+                .setDescription(`ログインボーナスとして${housyu}ポイントを付与しました。`)
+                .setAuthor({ name: 'ShibakenBot - ログインボーナス' })
+                .setColor('Green')
+                .setTimestamp();
+            message.reply({ content: `<@${userId}> ログインしました。`, allowedMentions: { repliedUser: false } , embeds: [lbembed]});
+            loginData[userId] = 1;
+            saveLoginData(loginData);
         }
-        fetch(url, options)
-            .then(res => res.json())
-            .then(json => console.log(json))
-            .catch(err => console.error('error:' + err));
-        // 通常
-        message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。 | 3000チー(カジノBOT通貨)をプレゼント!\``, allowedMentions: { repliedUser: false }});
-        // 期間限定で変更中 
-        // message.reply({ content:`<@${userId}>さん、こんにちは！\n\`今日初めてのログインです。(ログボ) | 期間限定で鯖主から記念で+2000!!! 5000チー(カジノBOT通貨)をプレゼント!\``, allowedMentions: { repliedUser: false }});
-        loginData[userId] = 1; // ログインを1に設定
-        saveLoginData(loginData);
     }
-    //特定の文字列に返信
-    const binzyo = ['かな','だよね','だよなぁ?','だよなぁ？','だよなぁ','だね','間違いない','だろ','なぁ？','なぁ?']
-    const wan = ['ワン','ワン！','ワン!']
-    const wan2 = ['ワンワン','ワンワン！','ワン！ワン！','ワン!ワン!','ワン!']
-    const nurupo = ['ぬるぽ']
-    if (binzyo.some(bark => message.content.endsWith(bark))) {
-        message.reply({ content:`そうだワン！`, allowedMentions: { repliedUser: false }});
-        return;
-    } 
-    //以下はぬるぽ単体で送られた場合のみ反応
-    else if (wan2.some(bark => message.content === bark)) {
-        message.reply({ content:`ワンワン！`, allowedMentions: { repliedUser: false }});
-        return;
-    } else if (wan.some(bark => message.content === bark)) {
-        message.reply({ content:`ワン！`, allowedMentions: { repliedUser: false }});
-        return;
-    }
-    if (nurupo.some(bark => message.content === bark)) {
-        message.reply({ content: `ガッ`, allowedMentions: { repliedUser: false } });
-        return;
-    }
-    }
-);
-// 汎用関数
-function memberCount() {
-    const guild = client.guilds.cache.get('1250416661522153553');
-    
-    const members = guild.members.cache;
-    const memberSize = members.filter(member => !member.user.bot).size;
-    
-    return memberSize;
-}
-
+});
 function botCount() {
     const guild = client.guilds.cache.get('1250416661522153553');
 
@@ -502,17 +611,18 @@ async function channelPanelNewYear() {
     const jstDate = new Date(jstString);
     const currentYear = jstDate.getFullYear();
     let channelName = "";
+    const channel = client.channels.cache.get("1338449627963461675");
     if (jstDate.getMonth() === 0 && jstDate.getDate() === 1) {
         channelName = "┠HappyNewYear!";
+        console.log(`新年チャンネル更新: HappyNewYear!`);
     } else {
         const nextJan1 = new Date(currentYear + 1, 0, 1);
         const diffDays = Math.ceil((nextJan1 - jstDate) / (1000 * 60 * 60 * 24));
         channelName = `┠新年まで${diffDays}日`;
+        console.log(`新年チャンネル更新: ${diffDays}日`);
     }
-    const channel = client.channels.cache.get("1338449627963461675");
     if (channel) {
         await channel.setName(channelName);
-        console.log(`新年チャンネル更新: ${channelName}`);
     } else {
         console.error("新年チャンネルが見つかりません");
     }
@@ -528,7 +638,7 @@ async function channelPanelHoliday() {
         const day = ("0" + jstDate.getDate()).slice(-2);
         const targetyyyy = jstDate.getFullYear();
         
-        // 新しい祝日のAPI呼び出し（holidays-jp API）
+        // 新しい祝日のAPI呼び出し（holidays-jp API） 
         const url = `https://holidays-jp.github.io/api/v1/date.json?date=${targetyyyy}-${month}-${day}`;
         const response = await fetch(url);
         let holiday = "";
@@ -540,23 +650,46 @@ async function channelPanelHoliday() {
         
         let channelName = "";
         if (holiday) {
-            channelName = `┠祝日: ${holiday}`;
+            channelName = `┠${holiday}`;
         } else {
             // 祝日でない場合は既存ロジック（曜日により算出）
             const weekday = jstDate.getDay();
             switch (weekday) {
-                case 0:
-                    channelName = "┠月曜が近いよ♪";
+                case 0: {
+                    const messages = [
+                        "┠月曜が近いよ♪",
+                        "┠月曜が近いヨ💦"
+                    ];
+                    channelName = messages[Math.floor(Math.random() * messages.length)];
                     break;
-                case 1:
-                    channelName = "┠月曜日ｲﾔﾀﾞｱｱｱ";
+                }
+                case 1: {
+                    const messages = [
+                        "┠月曜日ｲﾔﾀﾞｱｱｱ",
+                        "┠月曜だ.......",
+                        "┠もう月曜日!?!?"
+                    ];
+                    channelName = messages[Math.floor(Math.random() * messages.length)];
                     break;
-                case 6:
-                    channelName = "┠休日だよ！";
+                }
+                case 6: {
+                    const messages = [
+                        "┠休日だよ！",
+                        "┠ZZZZZ....",
+                        "┠日曜が近いよ♪"
+                    ];
+                    channelName = messages[Math.floor(Math.random() * messages.length)];
                     break;
-                case 5:
-                    channelName = "┠金曜日ﾀﾞｱｱｱ";
+                }
+                case 5: {
+                    const messages = [
+                        "┠金曜日ﾀﾞｱｱｱ",
+                        "┠金曜日共栄圏万歳",
+                        "┠金曜日金曜日金曜日"
+                    ];
+                    channelName = messages[Math.floor(Math.random() * messages.length)];
                     break;
+                }
                 default: {
                     const diff = 5 - weekday;
                     channelName = `┠金曜日まで${diff}日`;
@@ -576,7 +709,24 @@ async function channelPanelHoliday() {
     }
 }
 
+// 汎用関数
+function memberCount() {
+    const guild = client.guilds.cache.get('1250416661522153553');
+    
+    const members = guild.members.cache;
+    const memberSize = members.filter(member => !member.user.bot).size;
+    
+    return memberSize;
+}
 
+function botCount() {
+    const guild = client.guilds.cache.get('1250416661522153553');
+
+    const members = guild.members.cache;
+    const botSize = members.filter(member => member.user.bot).size;
+
+    return botSize;
+}
 
 //BOTの起動 tokenは.envに記述しておく
 client.login(token)

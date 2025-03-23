@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('verify')
         .setDescription('認証を開始'),
-    execute: async function(interaction) {
+    async execute(interaction) {
         const roleId = '1250418409854730263';
         const fetchedMember = await interaction.guild.members.fetch(interaction.member.id);
 
@@ -16,14 +16,18 @@ module.exports = {
         const row = new ActionRowBuilder().addComponents(verifyButton);
 
         if (fetchedMember.roles.cache.has(roleId)) {
-            const isAdmin = fetchedMember.id === "1223810206333407234";
-            await interaction.reply({
-                content: isAdmin
-                    ? `デバックモードが起動しました。管理者様(ID:1223810206333407234)こんにちは。`
-                    : `既に認証されているので開始することができません。`,
-                components: isAdmin ? [row] : [],
-                ephemeral: true
-            });
+            if (fetchedMember.id === "1223810206333407234") {
+                await interaction.reply({
+                    content: `デバックモードが起動しました。管理者様(ID:1223810206333407234)こんにちは。`,
+                    components: [row],
+                    ephemeral: true
+                });
+            } else {
+                await interaction.reply({
+                    content: `既に認証されているため、デバックモードを発動できません。`,
+                    ephemeral: true
+                });
+            }
             return;
         }
 
