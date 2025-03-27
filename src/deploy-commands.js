@@ -75,6 +75,67 @@ const commands = [
                     { name: '半', value: '1' },
                 ))
         .toJSON(),
+    new SlashCommandBuilder()
+        .setName('verify')
+        .setDescription('認証を開始')
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('embed')
+        .addAttachmentOption(option => 
+            option.setName('embedfile')
+            .setDescription('JSON又はEmbedBuilderで作成したconst部分と最初の{}を除いたjsファイルを添付してください')
+            .setRequired(true))
+        .setDescription('【管理者用】カスタムEmbedを送信します')
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('bosyu')
+        .setDescription('募集を開始します')
+        .addIntegerOption(option =>
+            option.setName('b_num')
+                .setDescription('募集人数を入力してください (無制限の場合は0)')
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('b_title')
+                .setDescription('ゲーム名または募集タイトルを入力してください')
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('mode')
+                .setDescription('募集モードを選択してください')
+                .setRequired(true)
+                .addChoices(
+                    { name: '即時募集', value: 'immediate' },
+                    { name: '予約募集', value: 'reservation' }
+                )
+        )
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('bosyu-info')
+        .setDescription('募集情報一覧または特定募集の情報を表示します')
+        .addStringOption(option =>
+            option.setName('id')
+                .setDescription('募集ID（指定した場合はその募集のURLを返します）')
+                .setRequired(false)
+        )
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('pin')
+        .setDescription('【ADMIN ONLY】SHIBAPIN - ShibakenBOT')
+        .addStringOption(option =>
+            option.setName('pin_choice')
+                .setDescription('【ADMIN ONLY】Please choose PIN type')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Unlock', value: 'unlock' },
+                    { name: 'VERIFy', value: 'verify' },
+                    { name: 'NOrmAL', value: 'normal' },
+                    { name: 'TExT', value: 'text' },
+                    { name: 'Ex', value: 'ex' },
+                )
+        )
+        .toJSON(),
+    
 ];
 async function main() {
     try {
