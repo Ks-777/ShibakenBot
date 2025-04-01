@@ -1,4 +1,6 @@
+![Bunner](https://github.com/Ks-777/ShibakenBot/blob/main/resource/shibaken-bunner.jpg?raw=true)
 # Shibaken!
+![ICON_FREE](https://github.com/Ks-777/ShibakenBot/blob/main/resource/shibaken-icon.png?raw=true)
 MIT license : Copyright © 2025 KS-777  
 Color：#e1b660  
 ## About
